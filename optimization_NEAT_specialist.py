@@ -14,6 +14,7 @@ from demo_controller import player_controller
 # imports other libs
 import numpy as np
 import os
+import neat
 
 # runs simulation
 def simulation(env,x):
@@ -25,7 +26,7 @@ def evaluate(env, x):
     return np.array(list(map(lambda y: simulation(env,y), x)))
 
 
-def main():
+def main(config_file):
     # choose this for not using visuals and thus making experiments faster
     headless = True
     if headless:
@@ -54,7 +55,12 @@ def main():
 
     # start writing your own code from here
 
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                         config_file)
 
 
 if __name__ == '__main__':
-    main()
+    local_dir = os.path.dirname(__file__)
+    config_path = os.path.join(local_dir, 'neat-config')
+    main(config_path)
