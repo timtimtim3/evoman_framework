@@ -10,67 +10,12 @@ import sys
 
 from evoman.environment import Environment
 from evoman.controller import Controller
+from optimization_utils import NEAT_Controller
 
 # imports other libs
 import numpy as np
 import os
 import neat
-
-class NEAT_Controller(Controller):
-	# def __init__(self, _n_hidden):
-	# 	self.n_hidden = [_n_hidden]
-
-	# def set(self,controller, n_inputs):
-	# 	# Number of hidden neurons
-
-	# 	if self.n_hidden[0] > 0:
-	# 		# Preparing the weights and biases from the controller of layer 1
-
-	# 		# Biases for the n hidden neurons
-	# 		self.bias1 = controller[:self.n_hidden[0]].reshape(1, self.n_hidden[0])
-	# 		# Weights for the connections from the inputs to the hidden nodes
-	# 		weights1_slice = n_inputs * self.n_hidden[0] + self.n_hidden[0]
-	# 		self.weights1 = controller[self.n_hidden[0]:weights1_slice].reshape((n_inputs, self.n_hidden[0]))
-
-	# 		# Outputs activation first layer.
-
-
-	# 		# Preparing the weights and biases from the controller of layer 2
-	# 		self.bias2 = controller[weights1_slice:weights1_slice + 5].reshape(1, 5)
-	# 		self.weights2 = controller[weights1_slice + 5:].reshape((self.n_hidden[0], 5))
-
-	def control(self, inputs, controller):
-		# Normalises the input using min-max scaling
-		inputs = (inputs-min(inputs))/float((max(inputs)-min(inputs)))
-		
-		output = controller.activate(inputs)
-	
-		if output[0] > 0.5:
-			left = 1
-		else:
-			left = 0
-
-		if output[1] > 0.5:
-			right = 1
-		else:
-			right = 0
-
-		if output[2] > 0.5:
-			jump = 1
-		else:
-			jump = 0
-
-		if output[3] > 0.5:
-			shoot = 1
-		else:
-			shoot = 0
-
-		if output[4] > 0.5:
-			release = 1
-		else:
-			release = 0
-
-		return [left, right, jump, shoot, release]
 
 def eval_genomes(genomes, config):
     for genome_id, genome in genomes:
@@ -91,12 +36,16 @@ def main(config_file):
     population.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     population.add_reporter(stats)
-    population.add_reporter(neat.Checkpointer(5))
+    name = 'neat-enemy' + str(enemy) + '-'
+    population.add_reporter(neat.Checkpointer(50,filename_prefix=name))
 
-    winner = population.run(eval_genomes, 300)
+    population.run(eval_genomes, 200)
+
+
 
 # choose this for not using visuals and thus making experiments faster
 headless = True
+
 if headless:
     os.environ["SDL_VIDEODRIVER"] = "dummy"
 
@@ -106,10 +55,10 @@ if not os.path.exists(experiment_name):
     os.makedirs(experiment_name)
 
 n_hidden_neurons = 10
-
+enemy = 1
 # initializes simulation in individual evolution mode, for single static enemy.
 env = Environment(experiment_name=experiment_name,
-                enemies=[2],
+                enemies=[enemy],
                 playermode="ai",
                 player_controller=NEAT_Controller(), # you  can insert your own controller here
                 enemymode="static",
