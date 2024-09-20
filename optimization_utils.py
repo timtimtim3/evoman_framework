@@ -1,5 +1,15 @@
 from demo_controller import player_controller
 import numpy
+from optimization_dummy import simulation
+
+class Individual:
+    def __init__(self, genotype):
+        self.genotype = genotype
+        self.fitness = None
+
+    def evaluate(self, env):
+        self.fitness = simulation(env, self.genotype)
+        return self.fitness
 
 def clone_controller(controller):
     new_controller = player_controller(controller.n_hidden)
@@ -38,7 +48,7 @@ def mutate(controller, std = 0.1, mutation_rate = 0.2):
     new_controller.weights2 += r_weights2
     return new_controller
 
-def crossover_avg(controllers):
+def crossover_avg(controllers, equal = True):
     # Neural network crossover in genetic algorithms using genetic programming - page 7
     """
     Crosses over the controllers by averaging the weights and biases of the controllers.
@@ -52,11 +62,16 @@ def crossover_avg(controllers):
     avg_bias2 = numpy.zeros(controllers[0].bias2.shape)
     avg_weights1 = numpy.zeros(controllers[0].weights1.shape)
     avg_weights2 = numpy.zeros(controllers[0].weights2.shape)
-    for controller in controllers:
-        avg_bias1    += controller.bias1 /n
-        avg_bias2    += controller.bias2 /n
-        avg_weights1 += controller.weights1 /n
-        avg_weights2 += controller.weights2 /n
+    if equal:
+        probs = [1/n]*n
+    else:
+        probs = np.random.uniform(0, 1, n)
+        probs = probs/sum(probs)
+    for controller, p in zip(controllers, probs):
+        avg_bias1    += controller.bias1 *p
+        avg_bias2    += controller.bias2 *p
+        avg_weights1 += controller.weights1 *p
+        avg_weights2 += controller.weights2 *p
     # Create the new controller
     new_controller = player_controller(controllers[0].n_hidden)
     new_controller.bias1    = avg_bias1
@@ -70,26 +85,17 @@ def get_recombination(x):
     matrix_shape = x[0].shape
     recombined_matrix = numpy.zeros(matrix_shape)
     if len(matrix_shape)==2:
-        
-        # Iterate over each element in the matrices
         for i in range(matrix_shape[0]):
             for j in range(matrix_shape[1]):
-                # Choose a random matrix from x
                 I = numpy.random.choice(range(len(x)))
                 random_matrix = x[I]
-                # Get the element at the current position
                 element = random_matrix[i, j]
-                # Assign the element to the recombined matrix
                 recombined_matrix[i, j] = element
     elif len(matrix_shape)==1:
-        # Iterate over each element in the matrices
         for i in range(matrix_shape[0]):
-            # Choose a random matrix from x
             I = numpy.random.choice(range(len(x)))
             random_matrix = x[I]
-            # Get the element at the current position
             element = random_matrix[i]
-            # Assign the element to the recombined matrix
             recombined_matrix[i] = element
     return recombined_matrix
 
@@ -114,4 +120,73 @@ def crossover_recombination(controllers):
     new_controller.weights2 = get_recombination(weights2)
     return new_controller
 
+def round_robin(pop, k = 10, choose_best = True):
+    """
+    Chooses k random controllers from the population and returns the best one.
+    :param pop: list of individuals, the population of controllers
+    :param k: int, the number of controllers to choose
+    :param choose_best: bool, whether to choose the best controller from the k controllers
+    :return: Individual, the chosen controller
+    """
+    # Choose k random controllers
+    chosen = numpy.random.choice(pop, k)
+    # Choose the best controller
+    if choose_best:
+        return max(chosen, key=lambda x: x.fitness)
+    else:
+        return min(chosen, key=lambda x: x.fitness)
 
+def get_children(pop, p_children, crossover_function = crossover_avg):
+    """
+    Gets the children of the population using crossover.
+    :param pop: list of individuals, the population of controllers
+    :param p_children: float, the proportion of children to generate
+    :param crossover_function: function, the function to use for crossover
+    :return: list of individuals, the children of the population
+    """
+    N = len(pop)* p_children
+    children = []
+    for _ in range(int(N)):
+        parent1 = round_robin(pop)
+        parent2 = round_robin(pop)
+        child = crossover_function([parent1.genotype, parent2.genotype])
+        children.append(Individual(child))
+    return children
+
+def remove_worst(pop,  p = 0.25):
+    """
+    Removes the n worst controllers from the population using round robin.
+    :param pop: list of individuals, the population of controllers
+    :param p: float, the proportion of controllers to remove
+    :return: list of individuals, the population of controllers with the n worst controllers removed
+    """
+    N = len(pop)* p
+    for _ in range(int(N)):
+        worst = round_robin(pop, choose_best = False)
+        pop.remove(worst)
+    return pop
+
+def mutate_population(pop, std = 0.1, mutation_rate = 0.2, mutation_prop = 0.1):
+    """
+    Mutates the population of controllers.
+    :param pop: list of individuals, the population of controllers
+    :param sigma: float, the standard deviation of the normal distribution
+    :return: list of individuals, the mutated population of controllers
+    """
+    for individual in pop:
+        if numpy.random.uniform(0, 1) < mutation_prop:
+            individual.genotype = mutate(individual.genotype, std, mutation_rate)
+    return pop
+
+def update_population(pop, p= 0.25, std = 0.1, mutation_rate = 0.2, mutation_prop = 0.1):
+    """
+    Updates the population by removing the worst controllers and generating new children.
+    :param pop: list of individuals, the population of controllers
+    :param p: float, the proportion of controllers to remove
+    :return: list of individuals, the updated population of controllers
+    """
+    children = get_children(pop, p)
+    pop = remove_worst(pop, p)
+    pop = mutate_population(pop, std = std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
+    pop += children
+    return pop
