@@ -17,7 +17,7 @@ class player_controller(Controller):
 	def __init__(self, _n_hidden):
 		self.n_hidden = [_n_hidden]
 
-	def set(self,controller, n_inputs):
+	def set(self, controller, n_inputs):
 		# Number of hidden neurons
 
 		if self.n_hidden[0] > 0:
@@ -81,7 +81,12 @@ class player_controller(Controller):
 			release = 0
 
 		return [left, right, jump, shoot, release]
-
+	
+	def n_vars(self, n_inputs=10):
+		# print(f"n_inputs: {n_inputs} {type(n_inputs)}")
+		# print(f"n_hidden: {self.n_hidden[0]} {type(self.n_hidden[0])}")
+		return (10+1)*10 + (10+1)*5
+		return (n_inputs+1)*self.n_hidden[0] + (self.n_hidden[0]+1)*5
 
 # implements controller structure for enemy
 class enemy_controller(Controller):

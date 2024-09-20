@@ -1,15 +1,35 @@
 from demo_controller import player_controller
 from evoman.controller import Controller
-import numpy
-from optimization_dummy import simulation
+import numpy as np
+# from optimization_dummy import simulation
+from tqdm import tqdm 
+
+
+# runs simulation
+def simulation(env,x):
+    f,p,e,t = env.play(pcont=x)
+    return f
+
+# evaluation
+def evaluate(env, x):
+    return np.array(list(map(lambda y: simulation(env,y), x)))
 
 class Individual:
-    def __init__(self, genotype):
-        self.genotype = genotype
+    def __init__(self, controller):
+        self.controller = controller
         self.fitness = None
+        self.network_size = controller.n_vars()
+
+    def controller_to_genotype(self, controller):
+        genotype = []
+        for params in [controller.bias1, controller.bias2, controller.weights1, controller.weights2]:
+            genotype += list(params.flatten())
+        genotype = np.array(genotype)
+        return genotype
 
     def evaluate(self, env):
-        self.fitness = simulation(env, self.genotype)
+        genotype = self.controller_to_genotype(self.controller)
+        self.fitness = simulation(env, genotype)
         return self.fitness
 
 def clone_controller(controller):
@@ -37,10 +57,10 @@ def mutate(controller, std = 0.1, mutation_rate = 0.2):
     weights1_s = controller.weights1.shape
     weights2_s = controller.weights2.shape
     # Generate the random values
-    r_bias1 = numpy.random.choice([0, 1], size=bias1_s, p=p) * numpy.random.normal(0, std, bias1_s)
-    r_bias2 = numpy.random.choice([0, 1], size=bias2_s, p=p) * numpy.random.normal(0, std, bias2_s)
-    r_weights1 = numpy.random.choice([0, 1], size=weights1_s, p=p) * numpy.random.normal(0, std, weights1_s)
-    r_weights2 = numpy.random.choice([0, 1], size=weights2_s, p=p) * numpy.random.normal(0, std, weights2_s)
+    r_bias1 = np.random.choice([0, 1], size=bias1_s, p=p) * np.random.normal(0, std, bias1_s)
+    r_bias2 = np.random.choice([0, 1], size=bias2_s, p=p) * np.random.normal(0, std, bias2_s)
+    r_weights1 = np.random.choice([0, 1], size=weights1_s, p=p) * np.random.normal(0, std, weights1_s)
+    r_weights2 = np.random.choice([0, 1], size=weights2_s, p=p) * np.random.normal(0, std, weights2_s)
     # Change the weights of the controller
     new_controller = clone_controller(controller)
     new_controller.bias1    += r_bias1
@@ -59,10 +79,10 @@ def crossover_avg(controllers, equal = True):
     # Get the number of controllers
     n = len(controllers)
     # Sum the weights and biases
-    avg_bias1 = numpy.zeros(controllers[0].bias1.shape)
-    avg_bias2 = numpy.zeros(controllers[0].bias2.shape)
-    avg_weights1 = numpy.zeros(controllers[0].weights1.shape)
-    avg_weights2 = numpy.zeros(controllers[0].weights2.shape)
+    avg_bias1 = np.zeros(controllers[0].bias1.shape)
+    avg_bias2 = np.zeros(controllers[0].bias2.shape)
+    avg_weights1 = np.zeros(controllers[0].weights1.shape)
+    avg_weights2 = np.zeros(controllers[0].weights2.shape)
     if equal:
         probs = [1/n]*n
     else:
@@ -84,17 +104,17 @@ def crossover_avg(controllers, equal = True):
 def get_recombination(x):
     x = list(x)
     matrix_shape = x[0].shape
-    recombined_matrix = numpy.zeros(matrix_shape)
+    recombined_matrix = np.zeros(matrix_shape)
     if len(matrix_shape)==2:
         for i in range(matrix_shape[0]):
             for j in range(matrix_shape[1]):
-                I = numpy.random.choice(range(len(x)))
+                I = np.random.choice(range(len(x)))
                 random_matrix = x[I]
                 element = random_matrix[i, j]
                 recombined_matrix[i, j] = element
     elif len(matrix_shape)==1:
         for i in range(matrix_shape[0]):
-            I = numpy.random.choice(range(len(x)))
+            I = np.random.choice(range(len(x)))
             random_matrix = x[I]
             element = random_matrix[i]
             recombined_matrix[i] = element
@@ -156,6 +176,7 @@ class NEAT_Controller(Controller):
 			release = 0
 
 		return [left, right, jump, shoot, release]
+     
 def round_robin(pop, k = 10, choose_best = True):
     """
     Chooses k random controllers from the population and returns the best one.
@@ -165,7 +186,7 @@ def round_robin(pop, k = 10, choose_best = True):
     :return: Individual, the chosen controller
     """
     # Choose k random controllers
-    chosen = numpy.random.choice(pop, k)
+    chosen = np.random.choice(pop, k)
     # Choose the best controller
     if choose_best:
         return max(chosen, key=lambda x: x.fitness)
@@ -185,7 +206,7 @@ def get_children(pop, p_children, crossover_function = crossover_avg):
     for _ in range(int(N)):
         parent1 = round_robin(pop)
         parent2 = round_robin(pop)
-        child = crossover_function([parent1.genotype, parent2.genotype])
+        child = crossover_function([parent1.controller, parent2.controller])
         children.append(Individual(child))
     return children
 
@@ -210,8 +231,8 @@ def mutate_population(pop, std = 0.1, mutation_rate = 0.2, mutation_prop = 0.1):
     :return: list of individuals, the mutated population of controllers
     """
     for individual in pop:
-        if numpy.random.uniform(0, 1) < mutation_prop:
-            individual.genotype = mutate(individual.genotype, std, mutation_rate)
+        if np.random.uniform(0, 1) < mutation_prop:
+            individual.controller = mutate(individual.controller, std, mutation_rate)
     return pop
 
 def update_population(pop, p= 0.25, std = 0.1, mutation_rate = 0.2, mutation_prop = 0.1):
@@ -226,3 +247,26 @@ def update_population(pop, p= 0.25, std = 0.1, mutation_rate = 0.2, mutation_pro
     pop = mutate_population(pop, std = std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
     pop += children
     return pop
+
+def evolve(env, npop=100, n_hidden=10, p_renew=0.3, mutation_rate=0.2, mutation_prop=0.1, std=0.1, n_generations=30):
+    fit_tracker = {"max": [], "mean": []}
+    network_size = (env.get_num_sensors()+1) * n_hidden + (n_hidden+1)*5
+    pop = [Individual(player_controller(n_hidden)) for _ in range(npop)]
+    pop_init = np.random.uniform(-1, 1, (npop, network_size))
+    n_inputs = env.get_num_sensors()
+    for i, individual in enumerate(pop):
+        individual.controller.set(pop_init[i], n_inputs)
+
+
+    #Evolve
+    for _ in range(n_generations):
+        for individual in pop:
+            individual.evaluate(env)
+        fitness = [individual.fitness for individual in pop]
+        fit_tracker["max"].append(max(fitness))
+        fit_tracker["mean"].append(np.mean(fitness))
+        pop = update_population(pop, p = p_renew, std = std, mutation_rate = mutation_rate, mutation_prop = mutation_prop)
+    for individual in pop:
+            individual.evaluate(env)   
+    
+    return pop, fit_tracker

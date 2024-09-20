@@ -75,7 +75,6 @@ def simulation(env,x):
 
 # normalizes
 def norm(x, pfit_pop):
-
     if ( max(pfit_pop) - min(pfit_pop) ) > 0:
         x_norm = ( x - min(pfit_pop) )/( max(pfit_pop) - min(pfit_pop) )
     else:
