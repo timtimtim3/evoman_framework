@@ -15,6 +15,10 @@ from demo_controller import player_controller
 import numpy as np
 import os
 
+from optimization_utils import Individual, evolve
+from plotter import plot_evolution
+from tqdm import tqdm
+
 # runs simulation
 def simulation(env,x):
     f,p,e,t = env.play(pcont=x)
@@ -49,11 +53,19 @@ def main():
                     visuals=False)
 
 
-    # number of weights for multilayer with 10 hidden neurons
-    n_vars = (env.get_num_sensors()+1)*n_hidden_neurons + (n_hidden_neurons+1)*5
+    # # number of weights for multilayer with 10 hidden neurons
+    # n_vars = (env.get_num_sensors()+1)*n_hidden_neurons + (n_hidden_neurons+1)*5
 
     # start writing your own code from here
-
+    fit_trackers =[]
+    N_experiments = 3
+    for _ in tqdm(range(N_experiments)):
+        pop, fit_tracker = evolve(env, n_generations=3)
+        best = max(pop, key=lambda x: x.fitness)
+        print(f"Best fitness: {best.fitness}")
+        fit_trackers.append(fit_tracker)
+    plot_evolution(fit_trackers)
+    
 
 
 if __name__ == '__main__':

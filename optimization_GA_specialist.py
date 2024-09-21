@@ -32,7 +32,7 @@ def main():
         os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 
-    experiment_name = 'optimization_test'
+    experiment_name = 'ga_optimization_specialist'
     if not os.path.exists(experiment_name):
         os.makedirs(experiment_name)
 
