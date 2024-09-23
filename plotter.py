@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_evolution(fit_trackers):
+def plot_evolution(fit_trackers, save=False, save_path="evolution_plot.png"):
     X = range(1, len(fit_trackers[0]['mean'])+1)
     means = np.array([f["mean"] for f in fit_trackers])
     maxs = np.array([f["max"] for f in fit_trackers])
@@ -22,3 +22,8 @@ def plot_evolution(fit_trackers):
     plt.tight_layout()
     plt.show()
 
+    if save:
+        plt.savefig(save_path)
+        print(f"Plot saved to {save_path}")
+
+    plt.show()
