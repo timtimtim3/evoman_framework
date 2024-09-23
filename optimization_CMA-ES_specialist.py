@@ -104,6 +104,8 @@ def main(args):
             best_models.append(best_model)
             fit_trackers.append(fit_tracker)
 
+        plot_evolution(fit_trackers, save=bool(args.save), save_path=f"{args.algo_name}_enemy{enemy}_evolution.png")
+
         test_env = Environment(experiment_name=args.experiment_name,
                                enemies=[enemy],
                                playermode="ai",
@@ -126,9 +128,8 @@ def main(args):
 
         individual_gains_by_enemy[f"{args.algo_name} {enemy}"] = mean_gains
 
-    plot_evolution(fit_trackers)
-    plot_box(individual_gains_by_enemy)
-    save_individual_gains(individual_gains_by_enemy)
+    plot_box(individual_gains_by_enemy, save=bool(args.save), save_path=f"{args.algo_name}_enemy{enemy}_box.png")
+    save_individual_gains(individual_gains_by_enemy, algo_name=args.algo_name)
 
 
 if __name__ == '__main__':
@@ -145,6 +146,7 @@ if __name__ == '__main__':
     parser.add_argument('--pop_size', type=int, default=20, help="Population size for CMA-ES.")
     parser.add_argument('--experiment_name', type=str, default='cma_es_optimization_specialist')
     parser.add_argument('--algo_name', type=str, default='CMA-ES')
+    parser.add_argument('--save', type=int, default=1, help="0 for not saving 1 for yes")
 
     args = parser.parse_args()
 
