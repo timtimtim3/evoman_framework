@@ -20,15 +20,15 @@ class Individual:
         self.fitness = None
         self.network_size = controller.n_vars()
 
-    def controller_to_genotype(self, controller):
+    def controller_to_genotype(self):
         genotype = []
-        for params in [controller.bias1, controller.bias2, controller.weights1, controller.weights2]:
+        for params in [self.controller.bias1, self.controller.bias2, self.controller.weights1, self.controller.weights2]:
             genotype += list(params.flatten())
         genotype = np.array(genotype)
         return genotype
 
     def evaluate(self, env):
-        genotype = self.controller_to_genotype(self.controller)
+        genotype = self.controller_to_genotype()
         self.fitness = simulation(env, genotype)
         return self.fitness
 
@@ -193,6 +193,17 @@ def round_robin(pop, k = 10, choose_best = True):
     else:
         return min(chosen, key=lambda x: x.fitness)
 
+def get_best(pop, p=0.5):
+    """
+    Gets the best controller from the population.
+    :param pop: list of individuals, the population of controllers
+    :param p: float, the proportion of controllers to consider
+    :return: Individual, the best controller
+    """
+    N = len(pop)* p
+    best = sorted(pop, key=lambda x: x.fitness, reverse=True)
+    return best[:int(N)]
+
 def get_children(pop, p_children, crossover_function = crossover_avg):
     """
     Gets the children of the population using crossover.
@@ -201,11 +212,11 @@ def get_children(pop, p_children, crossover_function = crossover_avg):
     :param crossover_function: function, the function to use for crossover
     :return: list of individuals, the children of the population
     """
-    N = len(pop)* p_children
+    candidates = get_best(pop)
     children = []
-    for _ in range(int(N)):
-        parent1 = round_robin(pop)
-        parent2 = round_robin(pop)
+    while len(candidates) > 1:
+        parent1 = candidates.pop(np.random.randint(0, len(candidates)))
+        parent2 = candidates.pop(np.random.randint(0, len(candidates)))
         child = crossover_function([parent1.controller, parent2.controller])
         children.append(Individual(child))
     return children
@@ -217,6 +228,8 @@ def remove_worst(pop,  p = 0.25):
     :param p: float, the proportion of controllers to remove
     :return: list of individuals, the population of controllers with the n worst controllers removed
     """
+    if p==1:
+        return []
     N = len(pop)* p
     for _ in range(int(N)):
         worst = round_robin(pop, choose_best = False)
@@ -244,19 +257,21 @@ def update_population(pop, p= 0.25, std = 0.1, mutation_rate = 0.2, mutation_pro
     """
     children = get_children(pop, p)
     pop = remove_worst(pop, p)
-    pop = mutate_population(pop, std = std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
     pop += children
+    pop = mutate_population(pop, std = std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
     return pop
 
-def evolve(env, npop=100, n_hidden=10, p_renew=0.3, mutation_rate=0.2, mutation_prop=0.1, std=0.1, n_generations=30):
+def evolve(env, npop=100, n_hidden=10, p=0.3, mutation_rate=0.2, mutation_prop=0.1, std=0.1, std_end = 0, std_decreasing=False, n_generations=30):
     fit_tracker = {"max": [], "mean": []}
+    
+    # Initialize population
     network_size = (env.get_num_sensors()+1) * n_hidden + (n_hidden+1)*5
     pop = [Individual(player_controller(n_hidden)) for _ in range(npop)]
+    best_individual = pop[0]
     pop_init = np.random.uniform(-1, 1, (npop, network_size))
     n_inputs = env.get_num_sensors()
     for i, individual in enumerate(pop):
         individual.controller.set(pop_init[i], n_inputs)
-
 
     #Evolve
     for _ in range(n_generations):
@@ -265,8 +280,11 @@ def evolve(env, npop=100, n_hidden=10, p_renew=0.3, mutation_rate=0.2, mutation_
         fitness = [individual.fitness for individual in pop]
         fit_tracker["max"].append(max(fitness))
         fit_tracker["mean"].append(np.mean(fitness))
-        pop = update_population(pop, p = p_renew, std = std, mutation_rate = mutation_rate, mutation_prop = mutation_prop)
-    for individual in pop:
-            individual.evaluate(env)   
+        pop = update_population(pop, p = p, std = std, mutation_rate = mutation_rate, mutation_prop = mutation_prop)
+        for individual in pop:
+                individual.evaluate(env)   
+        best_of_generation = max(pop, key=lambda x: x.fitness)
+        if best_of_generation.fitness > best_individual.fitness:
+            best_individual = best_of_generation
     
-    return pop, fit_tracker
+    return pop, fit_tracker, best_individual.controller_to_genotype()
