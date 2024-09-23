@@ -57,8 +57,8 @@ def main():
     # n_vars = (env.get_num_sensors()+1)*n_hidden_neurons + (n_hidden_neurons+1)*5
 
     # start writing your own code from here
-    fit_trackers =[]
-    N_experiments = 3
+    fit_trackers = []
+    N_experiments = 2
     for _ in tqdm(range(N_experiments)):
         pop, fit_tracker = evolve(env, n_generations=3)
         best = max(pop, key=lambda x: x.fitness)
