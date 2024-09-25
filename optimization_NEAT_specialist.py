@@ -7,6 +7,7 @@
 
 # imports framework
 import sys
+import pickle
 
 from evoman.environment import Environment
 from evoman.controller import Controller
@@ -28,8 +29,8 @@ def main(config_file):
     # start writing your own code from here
 
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
-                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
-                         config_file)
+                         neat.DefaultSpeciesSet,  neat.DefaultStagnation,
+                         filename=config_file)
     
     population = neat.Population(config)
 
@@ -39,7 +40,12 @@ def main(config_file):
     name = 'neat-enemy' + str(enemy) + '-'
     population.add_reporter(neat.Checkpointer(50,filename_prefix=name))
 
-    population.run(eval_genomes, 200)
+    winner = population.run(eval_genomes, 50)
+    name = 'neat-enemy' + str(enemy) + '-' + str(runnumber) + '.pkl'
+
+    with open(name, 'wb') as f:
+        pickle.dump(winner, f)
+        print("Finished dumping")
 
 
 
@@ -55,7 +61,8 @@ if not os.path.exists(experiment_name):
     os.makedirs(experiment_name)
 
 n_hidden_neurons = 10
-enemy = 1
+enemy = 8
+runnumber = 1
 # initializes simulation in individual evolution mode, for single static enemy.
 env = Environment(experiment_name=experiment_name,
                 enemies=[enemy],
