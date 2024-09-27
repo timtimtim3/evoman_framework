@@ -16,7 +16,7 @@ import numpy as np
 import os
 
 from optimization_utils import Individual, evolve
-from plotter import plot_evolution
+from plotter import *
 from tqdm import tqdm
 import argparse
 
@@ -37,39 +37,51 @@ def main(args):
         os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 
-    experiment_name = 'optimization_test'
-    if not os.path.exists(experiment_name):
-        os.makedirs(experiment_name)
+    
+    if not os.path.exists(args.experiment_name):
+        os.makedirs(args.experiment_name)
 
     n_hidden_neurons = args.n_hidden
 
-    # initializes simulation in individual evolution mode, for single static enemy.
-    env = Environment(experiment_name=experiment_name,
-                    enemies=args.enemies,
-                    playermode="ai",
-                    player_controller=player_controller(n_hidden_neurons), # you  can insert your own controller here
-                    enemymode="static",
-                    level=2,
-                    speed="fastest",
-                    visuals=False)
 
 
     # # number of weights for multilayer with 10 hidden neurons
     fit_trackers = []
-    best_individuals = []
-    for _ in tqdm(range(args.n_experiments)):
-        pop, fit_tracker, best_individual = evolve(env, 
-                                npop=args.npop,
-                                n_generations=args.n_generations,
-                                p=args.p,
-                                std=args.std,
-                                std_end=args.std_end,
-                                std_decreasing=args.std_decreasing,
-                                mutation_rate=args.mutation_rate,
-                                mutation_prop=args.mutation_prop)
-        fit_trackers.append(fit_tracker)
-        best_individuals.append(best_individual)
-    plot_evolution(fit_trackers)
+    best_models = []
+
+    individual_gains_by_enemy = {}
+    for enemy in args.enemies:
+        for _ in tqdm(range(args.n_experiments)):
+            pop, fit_tracker, best_individual = evolve(args, enemy, args.experiment_name)
+            fit_trackers.append(fit_tracker)
+            best_models.append(best_individual)
+        save_evolution_data(fit_trackers, args.algo_name, enemy)
+        # plot_evolution(fit_trackers)
+
+        test_env = Environment(experiment_name=args.experiment_name,
+                               enemies=[enemy],
+                               playermode="ai",
+                               player_controller=player_controller(args.n_hidden),
+                               # you  can insert your own controller here
+                               enemymode="static",
+                               level=2,
+                               speed="fastest",
+                               visuals=False)
+        
+        mean_gains = []
+        for i in range(args.n_experiments):
+            individual_gains = []
+            for _ in range(5):
+                f, p, e, t = test_env.play(pcont=best_models[i])
+                individual_gain = p - e
+                individual_gains.append(individual_gain)
+            mean_gain = np.mean(individual_gains)
+            mean_gains.append(mean_gain)
+
+        individual_gains_by_enemy[f"{args.algo_name} {enemy}"] = mean_gains
+    plot_box(individual_gains_by_enemy, save=bool(args.save), save_path=f"{args.algo_name}_enemy{enemy}_box.png")
+    save_individual_gains(individual_gains_by_enemy, algo_name=args.algo_name)
+
     
 
 
@@ -78,7 +90,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Neuroevolution - Genetic Algorithm neural network.')
     parser.add_argument('--npop', type=int, default=100, help='Population size')
     parser.add_argument('--n_generations', type=int, default=2, help='Number of generations')
-    parser.add_argument('--p', type=float, default=0.2, help='Proportion of individuals who get changed')
+    parser.add_argument('--p', type=float, default=0.5, help='Proportion of individuals who get changed')
     parser.add_argument('--std', type=float, default=1, help='Standard deviation for mutation')
     parser.add_argument('--std_end', type=float, default=0.1, help='Ending standard deviation for mutation')
     parser.add_argument('--std_decreasing', type=bool, default=True, help='Whether the mutation rate is decreasing')
@@ -86,7 +98,11 @@ if __name__ == '__main__':
     parser.add_argument('--mutation_prop', type=float, default=0.1, help='Proportion of genes to mutate')
     parser.add_argument('--n_hidden', type=int, default=10, help='Number of hidden neurons')
     parser.add_argument('--n_experiments', type=int, default=2, help='Number of experiments to run')
-    parser.add_argument('--enemies', type=int, nargs='+', default=[2], help='List of enemies to use')
+    parser.add_argument('--enemies', type=int, nargs='+', default=[1,2,3], help='List of enemies to use')
+    parser.add_argument('--algo_name', type=str, default='GA', help='Name of the algorithm')   
+    parser.add_argument('--experiment_name', type=str, default='optimization_EA', help='Name of the experiment')
+    parser.add_argument('--save', type=int, default=1, help='Whether to save the plots')
+
 
     args = parser.parse_args()
 
