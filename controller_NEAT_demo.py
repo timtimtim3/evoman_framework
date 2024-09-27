@@ -8,6 +8,7 @@
 
 # imports framework
 import sys, os
+import pickle
 import neat
 import neat.statistics
 from evoman.environment import Environment
@@ -25,23 +26,11 @@ def eval_genomes(genomes, config):
 experiment_name = 'controller_specialist_NEAT_demo'
 if not os.path.exists(experiment_name):
     os.makedirs(experiment_name)
-
-# initializes environment for single objective mode (specialist)  with static enemy and ai player
-env = Environment(experiment_name=experiment_name,
-				  playermode="ai",
-				  player_controller=NEAT_Controller(),
-			  	  speed="fastest",
-				  enemymode="static",
-				  level=2,
-				  visuals=False)
-
-
 # tests saved demo solutions for each enemy
 
 #Update the enemy
-enemy = 1
-checkpointnumber = 199
-env.update_parameter('enemies',[enemy])
+enemy = 8
+runnumber = 1
 
 local_dir = os.path.dirname(__file__)
 config_path = os.path.join(local_dir, 'neat-config')
@@ -49,28 +38,27 @@ config_path = os.path.join(local_dir, 'neat-config')
 config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_path)
-# Load specialist controller
-name = 'neat-enemy' + str(enemy) + '-' + str(checkpointnumber)
-population = neat.Checkpointer.restore_checkpoint(name)
-# stats = neat.StatisticsReporter()
-# winner = stats.best_genome
+name = 'neat-enemy' + str(enemy) + '-' + str(runnumber) + '.pkl'
 
-winner = population.run(eval_genomes, 1)
+with open(name, 'rb') as f:
+    winner = pickle.load(f)
+# winner = population.run(eval_genomes, 1)
 
 
 # neat.statistics.StatisticsReporter.post_evaluate(config, population )
 # winner = population.best_genome
-print(population)
+# print(population)
 print(winner)
 net = neat.nn.FeedForwardNetwork.create(winner, config)
 
-env2 = Environment(experiment_name=experiment_name,
+env = Environment(experiment_name=experiment_name,
 				  playermode="ai",
 				  player_controller=NEAT_Controller(),
 			  	  speed="normal",
 				  enemymode="static",
 				  level=2,
 				  visuals=True)
-env2.update_parameter('enemies',[enemy])
-print(env2.play(pcont=net))
+env.update_parameter('enemies',[enemy])
+for i in range(10):
+    print(env.play(pcont=net))
 
