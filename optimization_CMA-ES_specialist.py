@@ -149,7 +149,7 @@ if __name__ == '__main__':
     parser.add_argument('--pop_size', type=int, default=20, help="Population size for CMA-ES.")
     parser.add_argument('--experiment_name', type=str, default='cma_es_optimization_specialist')
     parser.add_argument('--algo_name', type=str, default='CMA-ES')
-    parser.add_argument('--save', type=int, default=0, help="0 for not saving 1 for yes")
+    parser.add_argument('--save', type=int, default=0, help="0 for not saving plots 1 for yes")
 
     args = parser.parse_args()
 
