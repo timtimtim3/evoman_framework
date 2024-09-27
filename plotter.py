@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-
-def plot_evolution(fit_trackers, save=False, save_path="evolution_plot.png"):
+import os
+def plot_evolution(fit_trackers, save=False, save_path="evolution_plot.png", show=False):
     X = range(1, len(fit_trackers[0]['mean'])+1)
     means = np.array([f["mean"] for f in fit_trackers])
     maxs = np.array([f["max"] for f in fit_trackers])
@@ -21,16 +21,16 @@ def plot_evolution(fit_trackers, save=False, save_path="evolution_plot.png"):
     plt.ylabel("Fitness")
     plt.legend()
     plt.tight_layout()
-    plt.show()
 
     if save:
         plt.savefig(save_path)
         print(f"Plot saved to {save_path}")
 
-    plt.show()
+    if show:
+        plt.show()
 
 
-def plot_box(individual_gains, save=False, save_path="boxplot.png"):
+def plot_box(individual_gains, save=False, save_path="boxplot.png", show=False, save_dir="mean_gains"):
     labels = list(individual_gains.keys())
     data = list(individual_gains.values())
 
@@ -38,20 +38,29 @@ def plot_box(individual_gains, save=False, save_path="boxplot.png"):
     plt.boxplot(data, labels=labels)
 
     plt.title("Boxplot of Individual Gains by Algorithm/Enemy")
-    # plt.xlabel("Algorithm & Enemy")
     plt.ylabel("Gains")
 
     plt.xticks(rotation=90, ha="right")
+    plt.tight_layout()
 
     if save:
-        plt.savefig(save_path, bbox_inches="tight")
-        print(f"Boxplot saved to {save_path}")
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
 
-    plt.tight_layout()
-    plt.show()
+        full_save_path = os.path.join(save_dir, save_path)
+        plt.savefig(full_save_path, bbox_inches="tight")
+        print(f"Boxplot saved to {full_save_path}")
 
-def save_individual_gains(individual_gains_by_enemy, algo_name):
+    if show:
+        plt.show()
+
+def save_individual_gains(individual_gains_by_enemy, algo_name, save_dir="mean_gains"):
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
     file_name = f"{algo_name}_mean_gains.json"
-    with open(file_name, 'w') as json_file:
+    file_path = os.path.join(save_dir, file_name)
+
+    with open(file_path, 'w') as json_file:
         json.dump(individual_gains_by_enemy, json_file)
     print(f"Individual gains saved to {file_name}")
