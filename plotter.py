@@ -66,6 +66,8 @@ def save_individual_gains(individual_gains_by_enemy, algo_name, save_dir="mean_g
     print(f"Individual gains saved to {file_name}")
 
 def save_evolution_data(fit_trackers, algo_name, enemy, target_directory="evolution_data"):
+    if not os.path.exists(target_directory):
+        os.makedirs(target_directory)
     file_name = f"{algo_name}_enemy{enemy}_evolution_data.json"
     file_name = f"{target_directory}/{file_name}"
     with open(file_name, 'w') as json_file:
