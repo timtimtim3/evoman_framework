@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 
+
+
 def plot_evolution(fit_trackers, save=False, save_path="evolution_plot.png"):
     X = range(1, len(fit_trackers[0]['mean'])+1)
     means = np.array([f["mean"] for f in fit_trackers])
@@ -31,11 +33,13 @@ def plot_evolution(fit_trackers, save=False, save_path="evolution_plot.png"):
 
 
 def plot_box(individual_gains, save=False, save_path="boxplot.png"):
-    labels = list(individual_gains.keys())
+    labelss = list(individual_gains.keys())
     data = list(individual_gains.values())
+    print(len(labelss))
+    print(len(data))
 
     plt.figure(figsize=(10, 6))
-    plt.boxplot(data, labels=labels)
+    plt.boxplot(data, labels=labelss)
 
     plt.title("Boxplot of Individual Gains by Algorithm/Enemy")
     # plt.xlabel("Algorithm & Enemy")
