@@ -138,7 +138,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--n_hidden_neurons', type=int, default=10,
                         help="Number of hidden neurons in the neural network.")
-    parser.add_argument('--n_experiments', type=int, default=10, help="Number of experiments to run.")
+    parser.add_argument('--n_experiments', type=int, default=2, help="Number of experiments to run.")
     parser.add_argument('--generations', type=int, default=10, help="Number of generations for the evolution process.")
     parser.add_argument('--sigma', type=float, default=0.5, help="Initial step size (sigma) for CMA-ES.")
     parser.add_argument('--enemies', type=int, nargs='+', default=[1, 3, 5],
