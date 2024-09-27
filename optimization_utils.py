@@ -3,6 +3,8 @@ from evoman.controller import Controller
 import numpy as np
 # from optimization_dummy import simulation
 from tqdm import tqdm 
+from evoman.environment import Environment
+from demo_controller import player_controller
 
 
 # runs simulation
@@ -261,8 +263,29 @@ def update_population(pop, p= 0.25, std = 0.1, mutation_rate = 0.2, mutation_pro
     pop = mutate_population(pop, std = std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
     return pop
 
-def evolve(env, npop=100, n_hidden=10, p=0.3, mutation_rate=0.2, mutation_prop=0.1, std=0.1, std_end = 0, std_decreasing=False, n_generations=30):
+def evolve(args, enemy, experiment_name):
     fit_tracker = {"max": [], "mean": []}
+
+    npop=args.npop
+    n_generations=args.n_generations
+    p=args.p
+    std=args.std
+    std_end=args.std_end
+    std_decreasing=args.std_decreasing
+    mutation_rate=args.mutation_rate
+    mutation_prop=args.mutation_prop
+    n_hidden=args.n_hidden
+
+    
+    # initializes simulation in individual evolution mode, for single static enemy.
+    env = Environment(experiment_name=experiment_name,
+                    enemies=[enemy],
+                    playermode="ai",
+                    player_controller=player_controller(n_hidden), # you  can insert your own controller here
+                    enemymode="static",
+                    level=2,
+                    speed="fastest",
+                    visuals=False)
     
     # Initialize population
     network_size = (env.get_num_sensors()+1) * n_hidden + (n_hidden+1)*5
