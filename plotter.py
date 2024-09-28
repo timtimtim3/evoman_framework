@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 import os
-def plot_evolution(fit_trackers, save=False, save_path="evolution_plot.png", show=False):
+def plot_evolution(fit_trackers, save=False, save_path="evolution_plot.png", show=False, save_dir="evolution_data"):
     X = range(1, len(fit_trackers[0]['mean'])+1)
     means = np.array([f["mean"] for f in fit_trackers])
     maxs = np.array([f["max"] for f in fit_trackers])
@@ -23,21 +23,27 @@ def plot_evolution(fit_trackers, save=False, save_path="evolution_plot.png", sho
     plt.tight_layout()
 
     if save:
-        plt.savefig(save_path)
-        print(f"Plot saved to {save_path}")
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+
+        full_save_path = os.path.join(save_dir, save_path)
+        plt.savefig(full_save_path)
+        print(f"Plot saved to {full_save_path}")
 
     if show:
         plt.show()
+
+    plt.close()
 
 
 def plot_box(individual_gains, save=False, save_path="boxplot.png", show=False, save_dir="mean_gains"):
     labels = list(individual_gains.keys())
     data = list(individual_gains.values())
-    print(len(labelss))
+    print(len(labels))
     print(len(data))
 
     plt.figure(figsize=(10, 6))
-    plt.boxplot(data, labels=labelss)
+    plt.boxplot(data, labels=labels)
 
     plt.title("Boxplot of Individual Gains by Algorithm/Enemy")
     plt.ylabel("Gains")

@@ -81,7 +81,7 @@ def train(args, enemy):
         #     np.save(f"{args.experiment_name}/best_solution_gen_{generation}.npy", es.result.xbest)
 
     print(f'Best final solution found in generation {best_generation} with fitness: {best_fitness}')
-    print(f'Final solution: {es.result.xbest}, best fitness: {-es.result.fbest}')
+    # print(f'Final solution: {es.result.xbest}, best fitness: {-es.result.fbest}')
     # np.save(f"{args.experiment_name}/best_final_solution.npy", best_solution)  # Save the best solution
     return fit_tracker, best_solution
 
@@ -105,6 +105,7 @@ def main(args):
             fit_trackers.append(fit_tracker)
         save_evolution_data(fit_trackers, args.algo_name, enemy)
 
+        print(fit_trackers)
         plot_evolution(fit_trackers, save=bool(args.save), save_path=f"{args.algo_name}_enemy{enemy}_evolution.png")
 
         test_env = Environment(experiment_name=args.experiment_name,
@@ -129,10 +130,9 @@ def main(args):
 
         individual_gains_by_enemy[f"{args.algo_name} {enemy}"] = mean_gains
 
-
-
-    plot_box(individual_gains_by_enemy, save=bool(args.save), save_path=f"{args.algo_name}_enemy{enemy}_box.png")
+    print(individual_gains_by_enemy)
     save_individual_gains(individual_gains_by_enemy, algo_name=args.algo_name)
+    plot_box(individual_gains_by_enemy, save=bool(args.save), save_path=f"{args.algo_name}_boxplot.png")
 
 
 if __name__ == '__main__':
@@ -142,14 +142,14 @@ if __name__ == '__main__':
     parser.add_argument('--n_hidden_neurons', type=int, default=10,
                         help="Number of hidden neurons in the neural network.")
     parser.add_argument('--n_experiments', type=int, default=2, help="Number of experiments to run.")
-    parser.add_argument('--generations', type=int, default=3, help="Number of generations for the evolution process.")
+    parser.add_argument('--generations', type=int, default=2, help="Number of generations for the evolution process.")
     parser.add_argument('--sigma', type=float, default=0.5, help="Initial step size (sigma) for CMA-ES.")
     parser.add_argument('--enemies', type=int, nargs='+', default=[1, 2, 3],
                         help="List of enemies to train against (can be a single integer or multiple integers).")
-    parser.add_argument('--pop_size', type=int, default=20, help="Population size for CMA-ES.")
+    parser.add_argument('--pop_size', type=int, default=100, help="Population size for CMA-ES.")
     parser.add_argument('--experiment_name', type=str, default='cma_es_optimization_specialist')
     parser.add_argument('--algo_name', type=str, default='CMA-ES')
-    parser.add_argument('--save', type=int, default=0, help="0 for not saving plots 1 for yes")
+    parser.add_argument('--save', type=int, default=1, help="0 for not saving plots 1 for yes")
 
     args = parser.parse_args()
 
