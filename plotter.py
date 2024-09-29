@@ -84,7 +84,7 @@ def save_evolution_data(fit_trackers, algo_name, enemy, target_directory="evolut
     print(f"Evolution data saved to {file_name}")
 
 def plot_evolution3x3(target_directory="evolution_data", save=True, save_path="evolution_plot.png", algo_names =["NEAT","GA","CMA-ES"]):
-    fig, axs = plt.subplots(3, 3, figsize=(15, 15))
+    fig, axs = plt.subplots(3, 3, figsize=(15, 15), sharey=True, sharex=True)
     if not os.path.exists(target_directory):
         os.makedirs(target_directory)
     for i, algo_name in enumerate(algo_names):
@@ -108,13 +108,17 @@ def plot_evolution3x3(target_directory="evolution_data", save=True, save_path="e
                 axs[i, j].set_title(f"Enemy {j+1}")
             if j==0: #only plot for first column
                 axs[i, j].set_ylabel(algo_name)    
-    # fig.subylabel("Fitness")
-    fig.text(0.04, 0.5, 'Fitness', va='center', rotation='vertical')
-    # fig.sup_xlabel("Generation")
-    fig.text(0.5, 0.04, 'Generation', ha='center')
-    handles, labels = axs[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='center left', bbox_to_anchor=(1, 0.5))
-    # plt.tight_layout()
+            axs[i,j].tick_params(labelleft=True, labelbottom=True)
+    # Title
+    fig.suptitle('Fitness over generations by algorithm and enemy', fontsize=20)
+    # X and Y labels    
+    fig.text(0.04, 0.5, 'Fitness', va='center', rotation='vertical', fontsize=15)
+    fig.text(0.5, 0.04, 'Generation', ha='center', fontsize=15)
+    
+    
+
+    #handles, labels = axs[0, 0].get_legend_handles_labels()
+    #fig.legend(handles, labels, loc='center left', bbox_to_anchor=(1, 0.5))
     if save:
         save_path = f"{target_directory}/{save_path}"
         plt.savefig(save_path)

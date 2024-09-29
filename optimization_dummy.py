@@ -56,7 +56,6 @@ def main(args):
             fit_trackers.append(fit_tracker)
             best_models.append(best_individual)
         save_evolution_data(fit_trackers, args.algo_name, enemy)
-        # plot_evolution(fit_trackers)
 
         test_env = Environment(experiment_name=args.experiment_name,
                                enemies=[enemy],
