@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 import os
+
 def plot_evolution(fit_trackers, save=False, save_path="evolution_plot.png", show=False, save_dir="evolution_data"):
     X = range(1, len(fit_trackers[0]['mean'])+1)
     means = np.array([f["mean"] for f in fit_trackers])
@@ -98,20 +99,22 @@ def plot_evolution3x3(target_directory="evolution_data", save=True, save_path="e
             mean_max = np.mean(maxs, axis=0)
             std_max = np.std(maxs, axis=0)
             axs[i, j].plot(X, mean_mean, label="Mean fitness", color="blue")
-            axs[i, j].fill_between(X, mean_mean-std_mean, mean_mean+std_mean, color="blue", alpha=0.3)
-            axs[i, j].fill_between(X, mean_mean-2*std_mean, mean_mean+2*std_mean, color="blue", alpha=0.2)
+            axs[i, j].fill_between(X, mean_mean-std_mean, mean_mean+std_mean, color="blue", alpha=0.3, label = "Mean fitness std")	
+            axs[i, j].fill_between(X, mean_mean-2*std_mean, mean_mean+2*std_mean, color="blue", alpha=0.2, label = "Mean fitness std*2")
             axs[i, j].plot(X, mean_max, label="Max fitness", color="red")
-            axs[i, j].fill_between(X, mean_max-std_max, mean_max+std_max, color="red", alpha=0.3)
-            axs[i, j].fill_between(X, mean_max-2*std_max, mean_max+2*std_max, color="red", alpha=0.2)
+            axs[i, j].fill_between(X, mean_max-std_max, mean_max+std_max, color="red", alpha=0.3, label = "Max fitness std")
+            axs[i, j].fill_between(X, mean_max-2*std_max, mean_max+2*std_max, color="red", alpha=0.2, label = "Max fitness std*2")
             if i==0: #only plot for first row
                 axs[i, j].set_title(f"Enemy {j+1}")
             if j==0: #only plot for first column
                 axs[i, j].set_ylabel(algo_name)    
-    fig.subylabel("Fitness")
-    fig.sup_xlabel("Generation")
+    # fig.subylabel("Fitness")
+    fig.text(0.04, 0.5, 'Fitness', va='center', rotation='vertical')
+    # fig.sup_xlabel("Generation")
+    fig.text(0.5, 0.04, 'Generation', ha='center')
     handles, labels = axs[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='center right')
-    plt.tight_layout()
+    fig.legend(handles, labels, loc='center left', bbox_to_anchor=(1, 0.5))
+    # plt.tight_layout()
     if save:
         save_path = f"{target_directory}/{save_path}"
         plt.savefig(save_path)

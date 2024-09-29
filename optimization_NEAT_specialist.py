@@ -13,6 +13,7 @@ from evoman.environment import Environment
 from evoman.controller import Controller
 from optimization_utils import NEAT_Controller
 
+
 # imports other libs
 import numpy as np
 import os
@@ -26,6 +27,8 @@ def eval_genomes(genomes, config):
 
 
 def main(config_file):
+
+    
     # start writing your own code from here
 
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
@@ -33,6 +36,8 @@ def main(config_file):
                          filename=config_file)
     
     for i in range(1,runs+1):
+        # initializes simulation in individual evolution mode, for single static enemy.
+        
         population = neat.Population(config)
 
         population.add_reporter(neat.StdOutReporter(True))
@@ -70,15 +75,15 @@ if not os.path.exists(experiment_name):
 n_hidden_neurons = 10
 enemy = 3
 runs = 10
-# initializes simulation in individual evolution mode, for single static enemy.
+
 env = Environment(experiment_name=experiment_name,
-                enemies=[enemy],
-                playermode="ai",
-                player_controller=NEAT_Controller(), # you  can insert your own controller here
-                enemymode="static",
-                level=2,
-                speed="fastest",
-                visuals=False)
+                        enemies=[enemy],
+                        playermode="ai",
+                        player_controller=NEAT_Controller(), # you  can insert your own controller here
+                        enemymode="static",
+                        level=2,
+                        speed="fastest",
+                        visuals=False)
 
 
 # number of weights for multilayer with 10 hidden neurons

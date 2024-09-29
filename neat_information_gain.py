@@ -15,13 +15,14 @@ import neat.statistics
 from neat.math_util import mean
 from evoman.environment import Environment
 from optimization_utils import NEAT_Controller
-from plotter import plot_box
+from plotter import *
 
 # imports other libs
 import numpy as np
 
 # tests saved demo solutions for each enemy
 os.environ["SDL_VIDEODRIVER"] = "dummy"
+
 #Update the enemy
 enemy = 8
 runnumber = 1
@@ -65,7 +66,8 @@ for enemy in enemies:
         individual_gain_means.append(individual_gain_mean)
 
     individual_gains_by_enemy[f"NEAT-{enemy}"] = individual_gain_means
+
 print(individual_gains_by_enemy)
 plot_box(individual_gains_by_enemy)
-
+save_individual_gains(individual_gains_by_enemy, algo_name='NEAT')
 
