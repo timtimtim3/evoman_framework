@@ -5,13 +5,8 @@
 # karine.smiras@gmail.com     				                                  #
 ###############################################################################
 import argparse
-# imports framework
-import sys
-
 from evoman.environment import Environment
 from demo_controller import player_controller
-
-# imports other libs
 import numpy as np
 import os
 import cma
@@ -35,7 +30,6 @@ def train(args, enemy):
                       enemies=[enemy],
                       playermode="ai",
                       player_controller=player_controller(args.n_hidden_neurons),
-                      # you  can insert your own controller here
                       enemymode="static",
                       level=2,
                       speed="fastest",
@@ -43,8 +37,6 @@ def train(args, enemy):
 
     # number of weights for multilayer with 10 hidden neurons
     n_vars = (env.get_num_sensors() + 1) * args.n_hidden_neurons + (args.n_hidden_neurons + 1) * 5
-
-    # start writing your own code from here
 
     # params
     initial_guess = np.random.uniform(-1, 1, n_vars)
@@ -75,18 +67,11 @@ def train(args, enemy):
             best_generation = generation + 1
 
         print(f'Generation {generation + 1}, best fitness: {current_best_fitness}')
-        # print(f'Population size in this generation: {es.popsize}')  # <-- Added this line to print population size
-
-        # if generation % 10 == 0:
-        #     np.save(f"{args.experiment_name}/best_solution_gen_{generation}.npy", es.result.xbest)
 
     print(f'Best final solution found in generation {best_generation} with fitness: {best_fitness}')
-    # print(f'Final solution: {es.result.xbest}, best fitness: {-es.result.fbest}')
-    # np.save(f"{args.experiment_name}/best_final_solution.npy", best_solution)  # Save the best solution
     return fit_tracker, best_solution
 
 def main(args):
-    # choose this for not using visuals and thus making experiments faster
     headless = True
     if headless:
         os.environ["SDL_VIDEODRIVER"] = "dummy"
@@ -112,7 +97,6 @@ def main(args):
                                enemies=[enemy],
                                playermode="ai",
                                player_controller=player_controller(args.n_hidden_neurons),
-                               # you  can insert your own controller here
                                enemymode="static",
                                level=2,
                                speed="fastest",
