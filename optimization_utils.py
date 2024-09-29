@@ -296,14 +296,19 @@ def evolve(args, enemy, experiment_name):
     for i, individual in enumerate(pop):
         individual.controller.set(pop_init[i], n_inputs)
 
+    # Initialise std scheme
+    if std_decreasing:
+        stds = np.linspace(std, std_end, n_generations)
+    else:
+        stds = [std]*n_generations
     #Evolve
-    for _ in range(n_generations):
+    for i in range(n_generations):
         for individual in pop:
             individual.evaluate(env)
         fitness = [individual.fitness for individual in pop]
         fit_tracker["max"].append(max(fitness))
         fit_tracker["mean"].append(np.mean(fitness))
-        pop = update_population(pop, p = p, std = std, mutation_rate = mutation_rate, mutation_prop = mutation_prop)
+        pop = update_population(pop, p = p, std = stds[i], mutation_rate = mutation_rate, mutation_prop = mutation_prop)
         for individual in pop:
                 individual.evaluate(env)   
         best_of_generation = max(pop, key=lambda x: x.fitness)

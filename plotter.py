@@ -66,6 +66,8 @@ def save_individual_gains(individual_gains_by_enemy, algo_name, save_dir="mean_g
     print(f"Individual gains saved to {file_name}")
 
 def save_evolution_data(fit_trackers, algo_name, enemy, target_directory="evolution_data"):
+    if not os.path.exists(target_directory):
+        os.makedirs(target_directory)
     file_name = f"{algo_name}_enemy{enemy}_evolution_data.json"
     file_name = f"{target_directory}/{file_name}"
     with open(file_name, 'w') as json_file:
@@ -74,6 +76,8 @@ def save_evolution_data(fit_trackers, algo_name, enemy, target_directory="evolut
 
 def plot_evolution3x3(target_directory="evolution_data", save=True, save_path="evolution_plot.png", algo_names =["NEAT","GA","CMA-ES"]):
     fig, axs = plt.subplots(3, 3, figsize=(15, 15))
+    if not os.path.exists(target_directory):
+        os.makedirs(target_directory)
     for i, algo_name in enumerate(algo_names):
         for j in range(3):
             with open(f"{target_directory}/{algo_name}_enemy{j+1}_evolution_data.json", 'r') as json_file:
