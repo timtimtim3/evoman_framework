@@ -42,32 +42,44 @@ env = Environment(experiment_name='test',
 				  visuals=False)
 
 
+# Variables
 enemies = [1,2,3]
 runs = 10
 
 individual_gains_by_enemy = {}
 
+# Loop through all enemies
 for enemy in enemies:
+    # Update enemy
     env.update_parameter('enemies',[enemy])
+
+    # Loop through all runs
     individual_gain_means = []
     for i in range(1,runs+1):
-
-        name = 'neat-enemy' + str(enemy) + '-' + str(i) + '.pkl'
-        print(name)
+        # Load best genome
+        name = 'neatbest/neat-enemy' + str(enemy) + '-' + str(i) + '.pkl'
         with open(name, 'rb') as f:
             winner = pickle.load(f)
 
+        # Create Neural network
         net = neat.nn.FeedForwardNetwork.create(winner, config)
         individual_gain = []
+
+        # Make it play 5 times and save individual gain 
         for i in range(5):
             f, p, e, t = env.play(pcont=net)
             individual_gain.append(p - e)
+
+        # Calculate mean of 5 runs and then save the result
         individual_gain_mean = mean(individual_gain)
         individual_gain_means.append(individual_gain_mean)
 
+    # Save for each enemy in dict
     individual_gains_by_enemy[f"NEAT {enemy}"] = individual_gain_means
 
 print(individual_gains_by_enemy)
 plot_box(individual_gains_by_enemy)
+
+# Save the data for later
 save_individual_gains(individual_gains_by_enemy, algo_name='NEAT')
 

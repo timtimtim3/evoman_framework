@@ -1,3 +1,5 @@
+# File used to create directories instead of having to create them all by hand
+
 import os
 
 local_dir = os.path.dirname(__file__)

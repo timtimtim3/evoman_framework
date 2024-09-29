@@ -14,51 +14,40 @@ import neat.statistics
 from evoman.environment import Environment
 from optimization_utils import NEAT_Controller
 
-# imports other libs
-import numpy as np
-
-def eval_genomes(genomes, config):
-    for genome_id, genome in genomes:
-        net = neat.nn.FeedForwardNetwork.create(genome, config)
-
-        genome.fitness, p,e,t = env.play(pcont=net)
-
-experiment_name = 'controller_specialist_NEAT_demo'
-if not os.path.exists(experiment_name):
-    os.makedirs(experiment_name)
-# tests saved demo solutions for each enemy
-
-#Update the enemy
+# Variables to get correct run
 enemy = 1
 runnumber = 6
 
+
+# Get config file path
 local_dir = os.path.dirname(__file__)
 config_path = os.path.join(local_dir, 'neat-config')
 
 config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_path)
-name = 'neat-enemy' + str(enemy) + '-' + str(runnumber) + '.pkl'
 
+# Load best genome from specific run
+name = 'neat-enemy' + str(enemy) + '-' + str(runnumber) + '.pkl'
 with open(name, 'rb') as f:
     winner = pickle.load(f)
-# winner = population.run(eval_genomes, 1)
 
-
-# neat.statistics.StatisticsReporter.post_evaluate(config, population )
-# winner = population.best_genome
-# print(population)
-print(winner)
+# Create neural network with genome
 net = neat.nn.FeedForwardNetwork.create(winner, config)
 
-env = Environment(experiment_name=experiment_name,
+# Setup environment for a single static enemy
+env = Environment(experiment_name='demo',
 				  playermode="ai",
 				  player_controller=NEAT_Controller(),
 			  	  speed="normal",
 				  enemymode="static",
 				  level=2,
 				  visuals=True)
+
+# Update enemy to fight
 env.update_parameter('enemies',[enemy])
+
+# Show result
 for i in range(10):
     print(env.play(pcont=net))
 
