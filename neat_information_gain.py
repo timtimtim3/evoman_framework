@@ -65,7 +65,7 @@ for enemy in enemies:
         individual_gain_mean = mean(individual_gain)
         individual_gain_means.append(individual_gain_mean)
 
-    individual_gains_by_enemy[f"NEAT-{enemy}"] = individual_gain_means
+    individual_gains_by_enemy[f"NEAT {enemy}"] = individual_gain_means
 
 print(individual_gains_by_enemy)
 plot_box(individual_gains_by_enemy)
