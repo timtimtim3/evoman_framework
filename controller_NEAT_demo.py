@@ -29,8 +29,8 @@ if not os.path.exists(experiment_name):
 # tests saved demo solutions for each enemy
 
 #Update the enemy
-enemy = 8
-runnumber = 1
+enemy = 1
+runnumber = 6
 
 local_dir = os.path.dirname(__file__)
 config_path = os.path.join(local_dir, 'neat-config')

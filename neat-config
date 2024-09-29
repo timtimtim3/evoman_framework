@@ -3,7 +3,7 @@
 [NEAT]
 fitness_criterion     = max
 fitness_threshold     = 100
-pop_size              = 150
+pop_size              = 100
 reset_on_extinction   = True
 
 [DefaultGenome]
@@ -12,12 +12,12 @@ activation_default      = sigmoid
 activation_mutate_rate  = 0.0
 activation_options      = sigmoid
 
-# node aggregation options
+; # node aggregation options
 aggregation_default     = sum
 aggregation_mutate_rate = 0.0
 aggregation_options     = sum
 
-# node bias options
+; # node bias options
 bias_init_mean          = 0.0
 bias_init_stdev         = 1.0
 bias_max_value          = 30.0
@@ -26,7 +26,7 @@ bias_mutate_power       = 0.5
 bias_mutate_rate        = 0.7
 bias_replace_rate       = 0.1
 
-# genome compatibility options
+# genome compatibility options // do not matter since we are using one species
 compatibility_disjoint_coefficient = 1.0
 compatibility_weight_coefficient   = 0.5
 
@@ -36,7 +36,7 @@ conn_delete_prob        = 0.5
 
 # connection enable options
 enabled_default         = True
-enabled_mutate_rate     = 0.01
+enabled_mutate_rate     = 0.1
 
 feed_forward            = True
 initial_connection      = full_nodirect
@@ -72,11 +72,7 @@ weight_replace_rate     = 0.1
 compatibility_threshold = 100000.0
 
 [DefaultStagnation]
-; species_fitness_func = max
-; max_stagnation       = 5
-; species_elitism      = 1
+max_stagnation       = 100
 
 [DefaultReproduction]
-; min_species_size = 1
-elitism            = 2
-; survival_threshold = 0.2
+elitism            = 50

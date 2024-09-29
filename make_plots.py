@@ -1,7 +1,7 @@
 import json
 import os
 import argparse
-from plotter import plot_box
+from plotter import plot_box, plot_evolution3x3
 
 
 def load_and_combine_gains(algo_names, save_dir="mean_gains"):
@@ -34,7 +34,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    combined_gains = load_and_combine_gains(args.algo_names, save_dir=args.save_dir)
+    combined_gains = load_and_combine_gains(args.algo_names, save_dir=args.mean_gains_save_dir)
 
     print(combined_gains)
-    plot_box(combined_gains, save=True, save_path="combined_mean_gains.png")
+    plot_box(combined_gains, save=True, save_path="combined_boxplot.png")
+
+    plot_evolution3x3()

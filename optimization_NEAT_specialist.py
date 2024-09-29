@@ -32,20 +32,27 @@ def main(config_file):
                          neat.DefaultSpeciesSet,  neat.DefaultStagnation,
                          filename=config_file)
     
-    population = neat.Population(config)
+    for i in range(1,runs+1):
+        population = neat.Population(config)
 
-    population.add_reporter(neat.StdOutReporter(True))
-    stats = neat.StatisticsReporter()
-    population.add_reporter(stats)
-    name = 'neat-enemy' + str(enemy) + '-'
-    population.add_reporter(neat.Checkpointer(50,filename_prefix=name))
+        population.add_reporter(neat.StdOutReporter(True))
+        stats = neat.StatisticsReporter()
+        population.add_reporter(stats)
+        name = 'neatcheckpoints/enemy-' + str(enemy) + '/run-' + str(i) + '/'
+        population.add_reporter(neat.Checkpointer(1,filename_prefix=name))
 
-    winner = population.run(eval_genomes, 50)
-    name = 'neat-enemy' + str(enemy) + '-' + str(runnumber) + '.pkl'
+        winner = population.run(eval_genomes, 50)
+        name = 'neat-enemy' + str(enemy) + '-' + str(i) + '.pkl'
 
-    with open(name, 'wb') as f:
-        pickle.dump(winner, f)
-        print("Finished dumping")
+        with open(name, 'wb') as f:
+            pickle.dump(winner, f)
+            print("Finished dumping")
+        print('')
+        print('-------------------------------------')
+        print('finished run' 
+              , i)
+        print('-------------------------------------')
+        print('')
 
 
 
@@ -61,8 +68,8 @@ if not os.path.exists(experiment_name):
     os.makedirs(experiment_name)
 
 n_hidden_neurons = 10
-enemy = 8
-runnumber = 1
+enemy = 3
+runs = 10
 # initializes simulation in individual evolution mode, for single static enemy.
 env = Environment(experiment_name=experiment_name,
                 enemies=[enemy],
