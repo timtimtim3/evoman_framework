@@ -6,6 +6,41 @@ from tqdm import tqdm
 from evoman.environment import Environment
 from demo_controller import player_controller
 
+class NEAT_Controller(Controller):
+	def control(self, inputs, controller):
+		# Normalises the input using min-max scaling
+		inputs = (inputs-min(inputs))/float((max(inputs)-min(inputs)))
+		
+		output = controller.activate(inputs)
+	
+		if output[0] > 0.5:
+			left = 1
+		else:
+			left = 0
+
+		if output[1] > 0.5:
+			right = 1
+		else:
+			right = 0
+
+		if output[2] > 0.5:
+			jump = 1
+		else:
+			jump = 0
+
+		if output[3] > 0.5:
+			shoot = 1
+		else:
+			shoot = 0
+
+		if output[4] > 0.5:
+			release = 1
+		else:
+			release = 0
+
+		return [left, right, jump, shoot, release]
+
+
 
 # runs simulation
 def simulation(env,x):
@@ -143,41 +178,6 @@ def crossover_recombination(controllers):
     new_controller.weights2 = get_recombination(weights2)
     return new_controller
 
-
-
-class NEAT_Controller(Controller):
-	def control(self, inputs, controller):
-		# Normalises the input using min-max scaling
-		inputs = (inputs-min(inputs))/float((max(inputs)-min(inputs)))
-		
-		output = controller.activate(inputs)
-	
-		if output[0] > 0.5:
-			left = 1
-		else:
-			left = 0
-
-		if output[1] > 0.5:
-			right = 1
-		else:
-			right = 0
-
-		if output[2] > 0.5:
-			jump = 1
-		else:
-			jump = 0
-
-		if output[3] > 0.5:
-			shoot = 1
-		else:
-			shoot = 0
-
-		if output[4] > 0.5:
-			release = 1
-		else:
-			release = 0
-
-		return [left, right, jump, shoot, release]
      
 def round_robin(pop, k = 10, choose_best = True):
     """

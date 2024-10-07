@@ -81,6 +81,7 @@ def main(args):
             mean_gains.append(mean_gain)
 
         individual_gains_by_enemy[f"{args.algo_name} {enemy}"] = mean_gains
+    plot_evolution(fit_trackers, save=bool(args.save), save_path=f"{args.algo_name}_evolution.png", show = True)
     plot_box(individual_gains_by_enemy, save=bool(args.save), save_path=f"{args.algo_name}_box.png")
     save_individual_gains(individual_gains_by_enemy, algo_name=args.algo_name)
 
