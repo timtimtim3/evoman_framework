@@ -92,7 +92,7 @@ def mutate(individual, mutation_std = 0.1, mutation_rate = 0.2):
     """
     controller = individual.controller
     if individual.learnable_mutation:
-        std = individual.mutation_std
+        mutation_std = individual.mutation_std
         mutation_rate = individual.mutation_rate
     p = [1-mutation_rate, mutation_rate]
     # Get the shape of the controller
@@ -101,10 +101,10 @@ def mutate(individual, mutation_std = 0.1, mutation_rate = 0.2):
     weights1_s = controller.weights1.shape
     weights2_s = controller.weights2.shape
     # Generate the random values
-    r_bias1 = np.random.choice([0, 1], size=bias1_s, p=p) * np.random.normal(0, std, bias1_s)
-    r_bias2 = np.random.choice([0, 1], size=bias2_s, p=p) * np.random.normal(0, std, bias2_s)
-    r_weights1 = np.random.choice([0, 1], size=weights1_s, p=p) * np.random.normal(0, std, weights1_s)
-    r_weights2 = np.random.choice([0, 1], size=weights2_s, p=p) * np.random.normal(0, std, weights2_s)
+    r_bias1 = np.random.choice([0, 1], size=bias1_s, p=p) * np.random.normal(0, mutation_std, bias1_s)
+    r_bias2 = np.random.choice([0, 1], size=bias2_s, p=p) * np.random.normal(0, mutation_std, bias2_s)
+    r_weights1 = np.random.choice([0, 1], size=weights1_s, p=p) * np.random.normal(0, mutation_std, weights1_s)
+    r_weights2 = np.random.choice([0, 1], size=weights2_s, p=p) * np.random.normal(0, mutation_std, weights2_s)
     # Change the weights of the controller
     new_controller = clone_controller(controller)
     new_controller.bias1    += r_bias1
@@ -115,8 +115,8 @@ def mutate(individual, mutation_std = 0.1, mutation_rate = 0.2):
     individual.controller = new_controller
     # Mutate the mutation rate and std
     if individual.learnable_mutation and np.random.uniform(0, 1) < individual.mutation_rate:
-        individual.mutation_std = max(0.01, std + np.random.normal(0, std/10))
-        individual.mutation_rate = max(0.01, mutation_rate + np.random.normal(0, std/10))
+        individual.mutation_std = max(0.01, mutation_std + np.random.normal(0, mutation_std/10))
+        individual.mutation_rate = max(0.01, mutation_rate + np.random.normal(0, mutation_std/10))
     return individual
 
 def crossover_avg(individuals, equal = True):
