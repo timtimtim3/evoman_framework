@@ -52,10 +52,14 @@ def evaluate(env, x):
     return np.array(list(map(lambda y: simulation(env,y), x)))
 
 class Individual:
-    def __init__(self, controller):
+    def __init__(self, controller, learnable_mutation= False):
         self.controller = controller
         self.fitness = None
         self.network_size = controller.n_vars()
+        self.learnable_mutation = bool(learnable_mutation)
+        if self.learnable_mutation:
+            self.mutation_std = learnable_mutation["mutation_std"]
+            self.mutation_rate = learnable_mutation["mutation_rate"]
 
     def controller_to_genotype(self):
         genotype = []
@@ -77,8 +81,7 @@ def clone_controller(controller):
     new_controller.weights2 = controller.weights2.copy()
     return new_controller
 
-def mutate(controller, std = 0.1, mutation_rate = 0.2):
-    # TODO: gradient as mutation
+def mutate(individual, mutation_std = 0.1, mutation_rate = 0.2):
     # Neural network crossover in genetic algorithms using genetic programming - page 7
     """
     Mutates the controller by adding a random value from a normal distribution with mean 0 and standard deviation sigma
@@ -87,6 +90,10 @@ def mutate(controller, std = 0.1, mutation_rate = 0.2):
     :param sigma: float, the standard deviation of the normal distribution
     :return: numpy array, the mutated controller
     """
+    controller = individual.controller
+    if individual.learnable_mutation:
+        std = individual.mutation_std
+        mutation_rate = individual.mutation_rate
     p = [1-mutation_rate, mutation_rate]
     # Get the shape of the controller
     bias1_s = controller.bias1.shape
@@ -104,39 +111,54 @@ def mutate(controller, std = 0.1, mutation_rate = 0.2):
     new_controller.bias2    += r_bias2
     new_controller.weights1 += r_weights1
     new_controller.weights2 += r_weights2
-    return new_controller
+    # Update controller
+    individual.controller = new_controller
+    # Mutate the mutation rate and std
+    if individual.learnable_mutation and np.random.uniform(0, 1) < individual.mutation_rate:
+        individual.mutation_std = max(0.01, std + np.random.normal(0, std/10))
+        individual.mutation_rate = max(0.01, mutation_rate + np.random.normal(0, std/10))
+    return individual
 
-def crossover_avg(controllers, equal = True):
+def crossover_avg(individuals, equal = True):
     # Neural network crossover in genetic algorithms using genetic programming - page 7
     """
     Crosses over the controllers by averaging the weights and biases of the controllers.
     :param controllers: list of numpy arrays, the controllers to be crossed over
     :return: numpy array, the crossed over controller
     """
+    controllers = [individual.controller for individual in individuals]
     # Get the number of controllers
-    n = len(controllers)
+    n = len(individuals)
     # Sum the weights and biases
-    avg_bias1 = np.zeros(controllers[0].bias1.shape)
-    avg_bias2 = np.zeros(controllers[0].bias2.shape)
-    avg_weights1 = np.zeros(controllers[0].weights1.shape)
-    avg_weights2 = np.zeros(controllers[0].weights2.shape)
+    c = individuals[0].controller
+    avg_bias1 = np.zeros(c.bias1.shape)
+    avg_bias2 = np.zeros(c.bias2.shape)
+    avg_weights1 = np.zeros(c.weights1.shape)
+    avg_weights2 = np.zeros(c.weights2.shape)
+    avg_mutation_rate = 0
+    avg_mutation_std = 0
     if equal:
         probs = [1/n]*n
     else:
         probs = np.random.uniform(0, 1, n)
         probs = probs/sum(probs)
-    for controller, p in zip(controllers, probs):
-        avg_bias1    += controller.bias1 *p
-        avg_bias2    += controller.bias2 *p
-        avg_weights1 += controller.weights1 *p
-        avg_weights2 += controller.weights2 *p
+    for individual, p in zip(individuals, probs):
+        avg_bias1    += individual.controller.bias1 * p
+        avg_bias2    += individual.controller.bias2 * p
+        avg_weights1 += individual.controller.weights1 * p
+        avg_weights2 += individual.controller.weights2 * p
+        if individual.learnable_mutation:
+            avg_mutation_rate += individual.mutation_rate * p
+            avg_mutation_std += individual.mutation_std * p
+
     # Create the new controller
     new_controller = player_controller(controllers[0].n_hidden)
     new_controller.bias1    = avg_bias1
     new_controller.bias2    = avg_bias2
     new_controller.weights1 = avg_weights1
     new_controller.weights2 = avg_weights2
-    return new_controller
+    new_individual = Individual(new_controller, learnable_mutation={"mutation_std": avg_mutation_std, "mutation_rate": avg_mutation_rate})
+    return new_individual
 
 def get_recombination(x):
     x = list(x)
@@ -158,12 +180,13 @@ def get_recombination(x):
     return recombined_matrix
 
 
-def crossover_recombination(controllers):
+def crossover_recombination(individuals):
     """
     Crosses over the controllers using recombination.
     :param controllers: list of numpy arrays, the controllers to be crossed over
     :return: numpy array, the crossed over controller
     """
+    controllers = [individual.controller for individual in individuals]
     # Get the shape of the controller
     biases1 = [controller.bias1 for controller in controllers]
     biases2 = [controller.bias2 for controller in controllers]
@@ -176,7 +199,11 @@ def crossover_recombination(controllers):
     new_controller.bias2    = get_recombination(biases2)
     new_controller.weights1 = get_recombination(weights1)
     new_controller.weights2 = get_recombination(weights2)
-    return new_controller
+    
+    std = np.random.choice([individual.mutation_std for individual in individuals])
+    mutation_rate = np.random.choice([individual.mutation_rate for individual in individuals])
+    new_individual = Individual(new_controller, learnable_mutation={"mutation_std": std, "mutation_rate": mutation_rate})
+    return new_individual
 
      
 def round_robin(pop, k = 10, choose_best = True):
@@ -206,7 +233,7 @@ def get_best(pop, p=0.5):
     best = sorted(pop, key=lambda x: x.fitness, reverse=True)
     return best[:int(N)]
 
-def get_children(pop, p, crossover_function = crossover_avg):
+def get_children(pop, p, n_parents, n_children, crossover_function):
     """
     Gets the children of the population using crossover.
     :param pop: list of individuals, the population of controllers
@@ -217,13 +244,18 @@ def get_children(pop, p, crossover_function = crossover_avg):
     candidates = get_best(pop, p)
     children = []
     while len(children) < len(pop)*p:
-        parent1 = round_robin(candidates, choose_best = True)
-        parent2 = round_robin(candidates, choose_best = True)
-        child = crossover_function([parent1.controller, parent2.controller])
-        children.append(Individual(child))
+        parents = []
+        for _ in range(n_parents):
+            parent = round_robin(candidates)
+            parents.append(parent)
+        for _ in range(n_children):
+            child = crossover_function(parents)
+            children.append(child)
+            if len(children) == len(pop)*p:
+                break
     return children
 
-def remove_worst(pop,  p = 0.25):
+def remove_worst(pop,  p):
     """
     Removes the n worst controllers from the population using round robin.
     :param pop: list of individuals, the population of controllers
@@ -238,7 +270,7 @@ def remove_worst(pop,  p = 0.25):
         pop.remove(worst)
     return pop
 
-def mutate_population(pop, std = 0.1, mutation_rate = 0.2, mutation_prop = 0.1):
+def mutate_population(pop, mutation_std, mutation_rate, mutation_prop):
     """
     Mutates the population of controllers.
     :param pop: list of individuals, the population of controllers
@@ -247,20 +279,20 @@ def mutate_population(pop, std = 0.1, mutation_rate = 0.2, mutation_prop = 0.1):
     """
     for individual in pop:
         if np.random.uniform(0, 1) < mutation_prop:
-            individual.controller = mutate(individual.controller, std, mutation_rate)
+            individual = mutate(individual, mutation_std, mutation_rate)
     return pop
 
-def update_population(pop, p= 0.25, std = 0.1, mutation_rate = 0.2, mutation_prop = 0.1):
+def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_parents, n_children):
     """
     Updates the population by removing the worst controllers and generating new children.
     :param pop: list of individuals, the population of controllers
     :param p: float, the proportion of controllers to remove
     :return: list of individuals, the updated population of controllers
     """
-    children = get_children(pop, p)
+    children = get_children(pop, p, n_parents, n_children, crossover_function = crossover_avg)
     pop = remove_worst(pop, p)
     pop += children
-    pop = mutate_population(pop, std = std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
+    pop = mutate_population(pop, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
     return pop
 
 def evolve(args, enemy, experiment_name):
@@ -269,12 +301,15 @@ def evolve(args, enemy, experiment_name):
     npop=args.npop
     n_generations=args.n_generations
     p=args.p
-    std=args.std
-    std_end=args.std_end
-    std_decreasing=args.std_decreasing
+    mutation_std=args.mutation_std
+    mutation_std_end=args.mutation_std_end
+    mutation_std_decreasing=args.mutation_std_decreasing
     mutation_rate=args.mutation_rate
     mutation_prop=args.mutation_prop
     n_hidden=args.n_hidden
+    learnable_mutation=args.learnable_mutation
+    n_parents = args.n_parents
+    n_children = args.n_children
 
     
     # initializes simulation in individual evolution mode, for single static enemy.
@@ -289,7 +324,11 @@ def evolve(args, enemy, experiment_name):
     
     # Initialize population
     network_size = (env.get_num_sensors()+1) * n_hidden + (n_hidden+1)*5
-    pop = [Individual(player_controller(n_hidden)) for _ in range(npop)]
+    if learnable_mutation:
+        learnable_params = {"mutation_std": mutation_std, "mutation_rate": mutation_rate}
+    else:
+        learnable_params = False
+    pop = [Individual(player_controller(n_hidden), learnable_params) for _ in range(npop)]
     best_individual = pop[0]
     pop_init = np.random.uniform(-1, 1, (npop, network_size))
     n_inputs = env.get_num_sensors()
@@ -297,18 +336,24 @@ def evolve(args, enemy, experiment_name):
         individual.controller.set(pop_init[i], n_inputs)
 
     # Initialise std scheme
-    if std_decreasing:
-        stds = np.linspace(std, std_end, n_generations)
+    if mutation_std_decreasing:
+        stds = np.linspace(mutation_std, mutation_std_end, n_generations)
     else:
-        stds = [std]*n_generations
+        stds = [mutation_std]*n_generations
     #Evolve
-    for i in range(n_generations):
-        for individual in pop:
+    for individual in pop:
             individual.evaluate(env)
+    for i in range(n_generations):
         fitness = [individual.fitness for individual in pop]
         fit_tracker["max"].append(max(fitness))
         fit_tracker["mean"].append(np.mean(fitness))
-        pop = update_population(pop, p = p, std = stds[i], mutation_rate = mutation_rate, mutation_prop = mutation_prop)
+        pop = update_population(pop, 
+                                p = p, 
+                                mutation_std = stds[i], 
+                                mutation_rate = mutation_rate, 
+                                mutation_prop = mutation_prop, 
+                                n_parents = n_parents, 
+                                n_children = n_children)
         for individual in pop:
                 individual.evaluate(env)   
         best_of_generation = max(pop, key=lambda x: x.fitness)

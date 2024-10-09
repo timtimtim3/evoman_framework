@@ -87,18 +87,23 @@ def main(args):
 
 import argparse
 if __name__ == '__main__':
+    # Command line arguments
     parser = argparse.ArgumentParser(description='Neuroevolution - Genetic Algorithm neural network.')
+    #Current assignment is light version
     parser.add_argument('--npop', type=int, default=100, help='Population size')
-    parser.add_argument('--n_generations', type=int, default=50, help='Number of generations')
+    parser.add_argument('--n_generations', type=int, default=5, help='Number of generations')
     parser.add_argument('--p', type=float, default=0.5, help='Proportion of individuals who get changed')
-    parser.add_argument('--std', type=float, default=1, help='Standard deviation for mutation')
-    parser.add_argument('--std_end', type=float, default=0.1, help='Ending standard deviation for mutation')
-    parser.add_argument('--std_decreasing', type=bool, default=True, help='Whether the mutation rate is decreasing')
+    parser.add_argument('--mutation_std', type=float, default=1, help='Standard deviation for mutation')
+    parser.add_argument('--mutation_std_end', type=float, default=0.1, help='Ending standard deviation for mutation')
+    parser.add_argument('--mutation_std_decreasing', type=bool, default=True, help='Whether the mutation rate is decreasing')
     parser.add_argument('--mutation_rate', type=float, default=0.2, help='Mutation rate')
     parser.add_argument('--mutation_prop', type=float, default=0.1, help='Proportion of genes to mutate')
+    parser.add_argument('--n_parents', type=int, default=4, help='Number of parents to select')
+    parser.add_argument('--n_children', type=int, default=3, help='Number of children to generate')
+    parser.add_argument('--learnable_mutation', type=bool, default=True, help='Whether to learn the mutation rate and std')
     parser.add_argument('--n_hidden', type=int, default=10, help='Number of hidden neurons')
-    parser.add_argument('--n_experiments', type=int, default=10, help='Number of experiments to run')
-    parser.add_argument('--enemies', type=int, nargs='+', default=[1,2,3], help='List of enemies to use')
+    parser.add_argument('--n_experiments', type=int, default=2, help='Number of experiments to run')
+    parser.add_argument('--enemies', type=int, nargs='+', default=[1], help='List of enemies to use')
     parser.add_argument('--algo_name', type=str, default='GA', help='Name of the algorithm')   
     parser.add_argument('--experiment_name', type=str, default='optimization_GA', help='Name of the experiment')
     parser.add_argument('--save', type=int, default=1, help='Whether to save the plots')
