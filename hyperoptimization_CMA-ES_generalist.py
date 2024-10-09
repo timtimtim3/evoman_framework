@@ -64,7 +64,7 @@ def objective(trial):
     trial.set_user_attr('enemies', enemies)
 
     n_hidden_neurons = 10
-    env = Environment(experiment_name='test',
+    env = Environment(experiment_name=experiment_name,
                       enemies=enemies,
                       playermode="ai",
                       multiplemode="yes",
@@ -73,7 +73,7 @@ def objective(trial):
                       level=2,
                       speed="fastest",
                       visuals=False)
-    env2 = Environment(experiment_name='test',
+    env2 = Environment(experiment_name=experiment_name,
                       enemies=[1,2,3,4,5,6,7,8],
                       playermode="ai",
                       multiplemode="yes",
@@ -123,12 +123,17 @@ def objective(trial):
     f, p, e, t = env2.play(pcont=best_solution)
     print(f'fitness against all enemies: {f}')
     trial.set_user_attr('best_model_solution', best_solution)
+    trial.set_user_attr('fit_tracker', fit_tracker)
     return f
     
 if __name__ == '__main__':    
     headless = True
     if headless:
         os.environ["SDL_VIDEODRIVER"] = "dummy"
+
+    experiment_name = 'test'
+    if not os.path.exists(experiment_name):
+        os.makedirs(experiment_name)
 
     study = optuna.create_study(study_name='test', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/example', load_if_exists=True)
 
