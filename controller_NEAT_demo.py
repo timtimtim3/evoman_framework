@@ -13,10 +13,16 @@ import neat
 import neat.statistics
 from evoman.environment import Environment
 from optimization_utils import NEAT_Controller
+from neat.math_util import mean
+
+headless = False
+
+if headless:
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 # Variables to get correct run
-enemy = 1
-runnumber = 6
+enemy = 10
+runnumber = 1
 
 
 # Get config file path
@@ -36,8 +42,10 @@ with open(name, 'rb') as f:
 net = neat.nn.FeedForwardNetwork.create(winner, config)
 
 # Setup environment for a single static enemy
-env = Environment(experiment_name='demo',
+env = Environment(experiment_name='test',
 				  playermode="ai",
+                #   multiplemode='yes',
+                #   enemies=[1,2,3,4,5,6,7,8],
 				  player_controller=NEAT_Controller(),
 			  	  speed="normal",
 				  enemymode="static",
@@ -45,9 +53,14 @@ env = Environment(experiment_name='demo',
 				  visuals=True)
 
 # Update enemy to fight
-env.update_parameter('enemies',[enemy])
-
+# print(env.play(pcont=net))
 # Show result
-for i in range(10):
-    print(env.play(pcont=net))
-
+f = []
+for i in range(1,9):
+    env.update_parameter('enemies',[i])
+    fitness, p, e, t = env.play(pcont=net)
+    # print(fitness)
+    if p > 0:
+        print("win")
+    f.append(fitness)
+print(mean(f))
