@@ -325,10 +325,14 @@ def evolve(args, enemy, experiment_name):
     # Initialize population
     network_size = (env.get_num_sensors()+1) * n_hidden + (n_hidden+1)*5
     if learnable_mutation:
-        learnable_params = {"mutation_std": mutation_std, "mutation_rate": mutation_rate}
+        list_learnable_params = []
+        for i in range(npop):
+            list_learnable_params.append({"mutation_std": max(0.01, mutation_std+np.random.normal(0, mutation_std/10)), 
+                                          "mutation_rate": max(0.01, mutation_rate+np.random.normal(0, mutation_std/10))})
+                                        
     else:
-        learnable_params = False
-    pop = [Individual(player_controller(n_hidden), learnable_params) for _ in range(npop)]
+        list_learnable_params = [False] * npop
+    pop = [Individual(player_controller(n_hidden), list_learnable_params[i]) for i in range(npop)]
     best_individual = pop[0]
     pop_init = np.random.uniform(-1, 1, (npop, network_size))
     n_inputs = env.get_num_sensors()
