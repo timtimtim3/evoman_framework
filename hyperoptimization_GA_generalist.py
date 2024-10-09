@@ -82,8 +82,17 @@ def objective(trial):
         stds = [std]*n_generations
     #Evolve
     for individual in pop:
+        print('kiki')
         individual.evaluate(env)
-
+    env2 = Environment(experiment_name=experiment_name,
+                enemies=[1,2,3,4,5,6,7,8],
+                multiplemode='yes',
+                playermode="ai",
+                player_controller=player_controller(n_hidden), # you  can insert your own controller here
+                enemymode="static",
+                level=2,
+                speed="fastest",
+                visuals=False)
     for i in range(n_generations):
         fitness = [individual.fitness for individual in pop]
         fit_tracker["max"].append(max(fitness))
@@ -96,16 +105,8 @@ def objective(trial):
         if best_of_generation.fitness > best_individual.fitness:
             best_individual = best_of_generation
         
-        env2 = Environment(experiment_name=experiment_name,
-                    enemies=[1,2,3,4,5,6,7,8],
-                    multiplemode='yes',
-                    playermode="ai",
-                    player_controller=player_controller(n_hidden), # you  can insert your own controller here
-                    enemymode="static",
-                    level=2,
-                    speed="fastest",
-                    visuals=False)
-        f, p, e, t = env2.play(pcont=best_of_generation.controller)
+        f, player, e, t = env2.play(pcont=best_of_generation.controller_to_genotype())
+        print(f'fitness against all enemies: {f} in generation {i}')
         trial.report(f, i)
 
         if trial.should_prune():
@@ -138,7 +139,17 @@ if __name__ == '__main__':
     # parser.add_argument('--algo_name', type=str, default='GA', help='Name of the algorithm')   
     # parser.add_argument('--experiment_name', type=str, default='optimization_GA', help='Name of the experiment')
     # parser.add_argument('--save', type=int, default=1, help='Whether to save the plots')
+    headless = True
+    if headless:
+        os.environ["SDL_VIDEODRIVER"] = "dummy"
 
+    experiment_name = 'test'
+    if not os.path.exists(experiment_name):
+        os.makedirs(experiment_name)
+
+    study = optuna.create_study(study_name='test', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/GA', load_if_exists=True)
+
+    study.optimize(objective, n_trials=1, timeout=28800)
     experiment_name = 'test'
     if not os.path.exists(experiment_name):
         os.makedirs(experiment_name)
