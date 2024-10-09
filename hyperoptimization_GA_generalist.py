@@ -46,6 +46,9 @@ def objective(trial):
     mutation_rate = trial.suggest_float('Mutation rate', 0, 1)
     mutation_prop= trial.suggest_float('Proportion of genes to mutate', 0, 1)
     num_enemies = trial.suggest_int('Number of enemies', 2, 8)
+    n_parents = trial.suggest_int('Number of parents', 2, 10)
+    n_children = trial.suggest_int('Number of children', 2, 10)
+    print(f'pop_size {npop}, generations {n_generations}')
     
     value_range = list(range(1, 9))
     
@@ -82,8 +85,9 @@ def objective(trial):
         stds = [std]*n_generations
     #Evolve
     for individual in pop:
-        print('kiki')
+        # print('kiki')
         individual.evaluate(env)
+
     env2 = Environment(experiment_name=experiment_name,
                 enemies=[1,2,3,4,5,6,7,8],
                 multiplemode='yes',
@@ -93,11 +97,18 @@ def objective(trial):
                 level=2,
                 speed="fastest",
                 visuals=False)
+    print("Starting evolution")
     for i in range(n_generations):
         fitness = [individual.fitness for individual in pop]
         fit_tracker["max"].append(max(fitness))
         fit_tracker["mean"].append(np.mean(fitness))
-        pop = update_population(pop, p = p, std = stds[i], mutation_rate = mutation_rate, mutation_prop = mutation_prop)
+        pop = update_population(pop, 
+                                p = p, 
+                                mutation_std = stds[i], 
+                                mutation_rate = mutation_rate, 
+                                mutation_prop = mutation_prop, 
+                                n_parents = n_parents, 
+                                n_children = n_children)
         for individual in pop:
                 individual.evaluate(env)   
 
