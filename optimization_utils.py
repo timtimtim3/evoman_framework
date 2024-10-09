@@ -6,6 +6,41 @@ from tqdm import tqdm
 from evoman.environment import Environment
 from demo_controller import player_controller
 
+class NEAT_Controller(Controller):
+	def control(self, inputs, controller):
+		# Normalises the input using min-max scaling
+		inputs = (inputs-min(inputs))/float((max(inputs)-min(inputs)))
+		
+		output = controller.activate(inputs)
+	
+		if output[0] > 0.5:
+			left = 1
+		else:
+			left = 0
+
+		if output[1] > 0.5:
+			right = 1
+		else:
+			right = 0
+
+		if output[2] > 0.5:
+			jump = 1
+		else:
+			jump = 0
+
+		if output[3] > 0.5:
+			shoot = 1
+		else:
+			shoot = 0
+
+		if output[4] > 0.5:
+			release = 1
+		else:
+			release = 0
+
+		return [left, right, jump, shoot, release]
+
+
 
 # runs simulation
 def simulation(env,x):
@@ -143,41 +178,6 @@ def crossover_recombination(controllers):
     new_controller.weights2 = get_recombination(weights2)
     return new_controller
 
-
-
-class NEAT_Controller(Controller):
-	def control(self, inputs, controller):
-		# Normalises the input using min-max scaling
-		inputs = (inputs-min(inputs))/float((max(inputs)-min(inputs)))
-		
-		output = controller.activate(inputs)
-	
-		if output[0] > 0.5:
-			left = 1
-		else:
-			left = 0
-
-		if output[1] > 0.5:
-			right = 1
-		else:
-			right = 0
-
-		if output[2] > 0.5:
-			jump = 1
-		else:
-			jump = 0
-
-		if output[3] > 0.5:
-			shoot = 1
-		else:
-			shoot = 0
-
-		if output[4] > 0.5:
-			release = 1
-		else:
-			release = 0
-
-		return [left, right, jump, shoot, release]
      
 def round_robin(pop, k = 10, choose_best = True):
     """
@@ -206,7 +206,7 @@ def get_best(pop, p=0.5):
     best = sorted(pop, key=lambda x: x.fitness, reverse=True)
     return best[:int(N)]
 
-def get_children(pop, p_children, crossover_function = crossover_avg):
+def get_children(pop, p, crossover_function = crossover_avg):
     """
     Gets the children of the population using crossover.
     :param pop: list of individuals, the population of controllers
@@ -214,11 +214,11 @@ def get_children(pop, p_children, crossover_function = crossover_avg):
     :param crossover_function: function, the function to use for crossover
     :return: list of individuals, the children of the population
     """
-    candidates = get_best(pop)
+    candidates = get_best(pop, p)
     children = []
-    while len(candidates) > 1:
-        parent1 = candidates.pop(np.random.randint(0, len(candidates)))
-        parent2 = candidates.pop(np.random.randint(0, len(candidates)))
+    while len(children) < len(pop)*p:
+        parent1 = round_robin(candidates, choose_best = True)
+        parent2 = round_robin(candidates, choose_best = True)
         child = crossover_function([parent1.controller, parent2.controller])
         children.append(Individual(child))
     return children
