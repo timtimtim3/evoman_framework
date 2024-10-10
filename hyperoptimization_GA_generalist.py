@@ -40,11 +40,12 @@ def objective(trial):
     npop = trial.suggest_int('Population size', 10, 100)
     n_generations = trial.suggest_int('Generations', 100, 500)
     p = trial.suggest_float('Proportion of individuals who get changed', 0, 1)
-    std = trial.suggest_float('Standard deviation for mutation',0,5)
-    std_end = trial.suggest_float('Ending standard deviation for mutation', 0, 1)
-    std_decreasing = trial.suggest_categorical('Whether the mutation rate is decreasing',[True, False])
+    mutation_std = trial.suggest_float('Standard deviation for mutation',0,5)
+    mutation_std_end = trial.suggest_float('Ending standard deviation for mutation', 0, 1)
+    mutation_std_decreasing = trial.suggest_categorical('Whether the mutation rate is decreasing',[True, False])
     mutation_rate = trial.suggest_float('Mutation rate', 0, 1)
     mutation_prop= trial.suggest_float('Proportion of genes to mutate', 0, 1)
+    learnable_mutation = trial.suggest_categorical('Whether to learn the mutation rate and std', [True, False])
     num_enemies = trial.suggest_int('Number of enemies', 2, 8)
     n_parents = trial.suggest_int('Number of parents', 2, 10)
     n_children = trial.suggest_int('Number of children', 2, 10)
@@ -71,7 +72,11 @@ def objective(trial):
     
     # Initialize population
     network_size = (env.get_num_sensors()+1) * n_hidden + (n_hidden+1)*5
-    pop = [Individual(player_controller(n_hidden)) for _ in range(npop)]
+    if learnable_mutation:
+        learnable_params = {"mutation_std": mutation_std, "mutation_rate": mutation_rate}
+    else:
+        learnable_params = False
+    pop = [Individual(player_controller(n_hidden), learnable_params) for _ in range(npop)]
     best_individual = pop[0]
     pop_init = np.random.uniform(-1, 1, (npop, network_size))
     n_inputs = env.get_num_sensors()
@@ -79,10 +84,10 @@ def objective(trial):
         individual.controller.set(pop_init[i], n_inputs)
 
     # Initialise std scheme
-    if std_decreasing:
-        stds = np.linspace(std, std_end, n_generations)
+    if mutation_std_decreasing:
+        stds = np.linspace(mutation_std, mutation_std_end, n_generations)
     else:
-        stds = [std]*n_generations
+        stds = [mutation_std]*n_generations
     #Evolve
     for individual in pop:
         # print('kiki')
@@ -110,14 +115,15 @@ def objective(trial):
                                 n_parents = n_parents, 
                                 n_children = n_children)
         for individual in pop:
-                individual.evaluate(env)   
+                individual.evaluate(env)  
+        print(len(pop)) 
 
         best_of_generation = max(pop, key=lambda x: x.fitness)
         if best_of_generation.fitness > best_individual.fitness:
             best_individual = best_of_generation
-        
+
         f, player, e, t = env2.play(pcont=best_of_generation.controller_to_genotype())
-        print(f'fitness against all enemies: {f} in generation {i}')
+        print(f'fitness against all enemies: {f} in generation {i} trained fitness {best_of_generation.fitness}')
         trial.report(f, i)
 
         if trial.should_prune():
