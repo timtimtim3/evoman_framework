@@ -311,7 +311,13 @@ def evolve(args, enemy, experiment_name):
     n_parents = args.n_parents
     n_children = args.n_children
 
-    
+    n_islands = args.n_islands
+    migration_interval = args.migration_interval
+    migration_rate = args.migration_rate
+
+    if n_islands <= 1 or migration_rate == 0:
+        migration_interval == 0
+
     # initializes simulation in individual evolution mode, for single static enemy.
     env = Environment(experiment_name=experiment_name,
                     enemies=[enemy],
@@ -322,6 +328,10 @@ def evolve(args, enemy, experiment_name):
                     speed="fastest",
                     visuals=False)
     
+    # Initialize Islands
+    pop_per_island = npop // n_islands
+    remainder = npop % n_islands
+
     # Initialize population
     network_size = (env.get_num_sensors()+1) * n_hidden + (n_hidden+1)*5
     if learnable_mutation:
@@ -332,12 +342,19 @@ def evolve(args, enemy, experiment_name):
                                         
     else:
         list_learnable_params = [False] * npop
-    pop = [Individual(player_controller(n_hidden), list_learnable_params[i]) for i in range(npop)]
-    best_individual = pop[0]
-    pop_init = np.random.uniform(-1, 1, (npop, network_size))
-    n_inputs = env.get_num_sensors()
-    for i, individual in enumerate(pop):
-        individual.controller.set(pop_init[i], n_inputs)
+
+    islands = []
+    for i in range(n_islands):
+        # Distribute extra individuals (remainder) to the first islands
+        current_island_size = pop_per_island + (1 if i < remainder else 0)
+
+        island_pop = [Individual(player_controller(n_hidden), list_learnable_params[i]) for i in range(current_island_size)]
+        pop_init = np.random.uniform(-1, 1, (current_island_size, network_size))
+        n_inputs = env.get_num_sensors()
+        for j, individual in enumerate(island_pop):
+            individual.controller.set(pop_init[j], n_inputs)
+            individual.evaluate(env)
+        islands.append(island_pop)
 
     # Initialise std scheme
     if mutation_std_decreasing:
@@ -345,23 +362,40 @@ def evolve(args, enemy, experiment_name):
     else:
         stds = [mutation_std]*n_generations
     #Evolve
-    for individual in pop:
-            individual.evaluate(env)
+    best_individual = islands[0][0]
     for i in range(n_generations):
-        fitness = [individual.fitness for individual in pop]
+        fitness = [individual.fitness for island in islands for individual in island]
         fit_tracker["max"].append(max(fitness))
         fit_tracker["mean"].append(np.mean(fitness))
-        pop = update_population(pop, 
-                                p = p, 
-                                mutation_std = stds[i], 
-                                mutation_rate = mutation_rate, 
-                                mutation_prop = mutation_prop, 
-                                n_parents = n_parents, 
-                                n_children = n_children)
-        for individual in pop:
-                individual.evaluate(env)   
-        best_of_generation = max(pop, key=lambda x: x.fitness)
+        for island_pop in islands:
+            island_pop = update_population(island_pop, 
+                                    p = p, 
+                                    mutation_std = stds[i], 
+                                    mutation_rate = mutation_rate, 
+                                    mutation_prop = mutation_prop, 
+                                    n_parents = n_parents, 
+                                    n_children = n_children)
+            for individual in island_pop:
+                    individual.evaluate(env) 
+
+        # Migration
+        if migration_interval and i % migration_interval == 0:
+            for j in range(n_islands):
+                # Select a portion of individuals to migrate from island j to the next island
+                n_migrants = int(len(islands[j]) * migration_rate)
+                migrants = np.random.choice(islands[j], n_migrants, replace=False).tolist()
+                target_island = islands[(j + 1) % n_islands]  # Wrap around to the first island
+
+                # Add migrants to the next island and remove them from the current island
+                target_island.extend(migrants)
+                for migrant in migrants:
+                    islands[j].remove(migrant)  
+
+        best_of_generation = max([max(island, key=lambda x: x.fitness) for island in islands], key=lambda x: x.fitness)
         if best_of_generation.fitness > best_individual.fitness:
             best_individual = best_of_generation
-    
-    return pop, fit_tracker, best_individual.controller_to_genotype()
+
+    # Flatten list of all individuals from all islands for return
+    final_pop = [individual for island in islands for individual in island]
+
+    return final_pop, fit_tracker, best_individual.controller_to_genotype()

@@ -108,6 +108,9 @@ if __name__ == '__main__':
     parser.add_argument('--experiment_name', type=str, default='optimization_GA', help='Name of the experiment')
     parser.add_argument('--save', type=int, default=1, help='Whether to save the plots')
 
+    parser.add_argument('--n_islands', type=int, default=1, help='Number of islands for migration')
+    parser.add_argument('--migration_interval', type=int, default=5, help='Number of generations between migrations')
+    parser.add_argument('--migration_rate', type=int, default=0.2, help='Proportion of individuals to migrate during migration')
 
     args = parser.parse_args()
 
