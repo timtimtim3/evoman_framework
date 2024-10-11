@@ -5,6 +5,8 @@ from evoman.environment import Environment
 from demo_controller import player_controller
 import numpy as np
 import plotter
+import json
+import os
 
 
 
@@ -19,6 +21,9 @@ print("  Params: ")
 for key, value in best_trial.params.items():
     print("    {}: {}".format(key, value))
 
+os.makedirs('hypertune_params', exist_ok = True)
+with open('hypertune_params/CMA-ES-params.json', 'w') as json_file:
+    json.dump(best_trial.params, json_file, indent=3)
 
 controller = np.array(best_trial.user_attrs['best_model_solution'])
 
@@ -46,7 +51,14 @@ controller = np.array(best_trial.user_attrs['best_model_solution'])
 # for enemy in enemies:
 #     env.update_parameter('enemies',[enemy])
 #     print(env.play(pcont=controller))
+from optuna.visualization import plot_parallel_coordinate, plot_param_importances,plot_hypervolume_history,plot_pareto_front, plot_contour, plot_intermediate_values
 
 print(optuna.importance.get_param_importances(study))
+plot_parallel_coordinate(study).show()
+plot_param_importances(study).show()
+# plot_hypervolume_history(study)
+plot_contour(study).show()
+plot_intermediate_values(study).show()
 
-plotter.plot_evolution([best_trial.user_attrs['fit_tracker']],show=True)
+
+# plotter.plot_evolution([best_trial.user_attrs['fit_tracker']],show=True)
