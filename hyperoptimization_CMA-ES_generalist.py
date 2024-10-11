@@ -32,7 +32,8 @@ import torch.utils.data
 # runs simulation
 def simulation(env, x):
     f, p, e, t = env.play(pcont=x)
-    return f
+    return 0.9*(100 - e) + 0.1*p - np.log(t)
+    # return f
 
 
 # evaluation
@@ -84,17 +85,17 @@ def define_model(trial, env, n_hidden_neurons):
         'CMA_mu': cma_mu,
         'CMA_rankmu': cma_rankmu,
         'CMA_rankone': cma_rankone,
-        # 'CMA_stds': cma_stds,
         'CMA_dampsvec_fac': cma_dampsvec_fac,
-        # 'tolx': tolx,
-        # 'tolfun': tolfun,
-        # 'tolstagnation': tolstagnation,
         'CMA_active': cma_active,
         'CMA_mirrors': cma_mirrors,
         'CMA_mirrormethod': cma_mirrormethod,
         'CMA_dampsvec_fade': cma_dampsvec_fade,
         'minstd': minstd,
         'maxstd': maxstd
+        # 'CMA_stds': cma_stds,
+        # 'tolx': tolx,
+        # 'tolfun': tolfun,
+        # 'tolstagnation': tolstagnation,
     }
 
     initial_guess = np.random.uniform(-1, 1, n_vars)
@@ -102,15 +103,23 @@ def define_model(trial, env, n_hidden_neurons):
 
     return es
 
-# Global
 
 def objective(trial):
-    num_enemies = trial.suggest_int('Number of enemies', 2, 8)
+    # num_enemies = trial.suggest_int('Number of enemies', 2, 8)
+    tempenemies = []
+    tempenemies.append(trial.suggest_categorical("enemy 1", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 2", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 3", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 4", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 5", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 6", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 7", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 8", [True, False]))
     
-    value_range = list(range(1, 9))
-    
-    # Randomly sample unique integers without overlap
-    enemies = random.sample(value_range, num_enemies)   
+    enemies = []
+    for i in range(8):
+        if tempenemies[i]:
+            enemies.append(i+1) 
     
     trial.set_user_attr('enemies', enemies)
 
@@ -137,8 +146,7 @@ def objective(trial):
     model = define_model(trial, env, n_hidden_neurons)
 
     fit_tracker = {"mean": [], "max": []}
-    # generations = trial.suggest_int("generations", 10, 50)
-    generations = 1000
+    generations = trial.suggest_int("generations", 100, 500)
     best_fitness = float('-inf')
     best_solution = None
     best_generation = 0
@@ -162,7 +170,7 @@ def objective(trial):
             best_generation = generation + 1
 
         print(f'Generation {generation + 1}, best fitness: {current_best_fitness}')
-        f, p, e, t = env2.play(pcont=current_best_solution)
+        f = simulation(env2, best_solution)
         print(f'fitness against all enemies: {f}')
         trial.report(f, generation)
 
@@ -171,9 +179,9 @@ def objective(trial):
             raise optuna.exceptions.TrialPruned()
     
     print(f'enemies {enemies}')
-    f, p, e, t = env2.play(pcont=best_solution)
+    f = simulation(env2, best_solution)
     print(f'fitness against all enemies: {f}')
-    trial.set_user_attr('best_model_solution', best_solution)
+    trial.set_user_attr('best_model_solution', best_solution.tolist())
     trial.set_user_attr('fit_tracker', fit_tracker)
     return f
     
@@ -186,9 +194,10 @@ if __name__ == '__main__':
     if not os.path.exists(experiment_name):
         os.makedirs(experiment_name)
 
-    study = optuna.create_study(study_name='test', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/example', load_if_exists=True)
+    study = optuna.create_study(study_name='run1overnight', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
 
-    study.optimize(objective, n_trials=100, timeout=28800)
+    study = optuna.load_study()
+    study.optimize(objective, n_trials=10000, timeout=28800)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])

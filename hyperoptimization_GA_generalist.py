@@ -49,6 +49,7 @@ def objective(trial):
     num_enemies = trial.suggest_int('Number of enemies', 2, 8)
     n_parents = trial.suggest_int('Number of parents', 2, 10)
     n_children = trial.suggest_int('Number of children', 2, 10)
+    
     print(f'pop_size {npop}, generations {n_generations}')
     
     value_range = list(range(1, 9))
