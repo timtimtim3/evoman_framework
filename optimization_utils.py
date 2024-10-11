@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm 
 from evoman.environment import Environment
 from demo_controller import player_controller
+from copy import deepcopy
 
 class NEAT_Controller(Controller):
 	def control(self, inputs, controller):
@@ -52,10 +53,11 @@ def evaluate(env, x):
     return np.array(list(map(lambda y: simulation(env,y), x)))
 
 class Individual:
-    def __init__(self, controller, learnable_mutation= False):
+    def __init__(self, controller, learnable_mutation= False, n_inputs = 20):
         self.controller = controller
         self.fitness = None
         self.network_size = controller.n_vars()
+        self.n_inputs = n_inputs
         self.learnable_mutation = bool(learnable_mutation)
         if self.learnable_mutation:
             self.mutation_std = learnable_mutation["mutation_std"]
@@ -205,7 +207,38 @@ def crossover_recombination(individuals):
     new_individual = Individual(new_controller, learnable_mutation={"mutation_std": std, "mutation_rate": mutation_rate})
     return new_individual
 
-     
+def crossover_mixed(individuals):
+    """
+    Crosses over the controllers by mixing the genotypes.
+    :param individuals: list of Individual, the individuals to be crossed over
+    :return: Individual, the crossed over individual
+    """
+    # Get the genotypes
+    genotypes = [individual.controller_to_genotype() for individual in individuals]
+    # Choose a random individual as baseline
+    baseline = genotypes[np.random.randint(len(genotypes))]
+    new_genotype = deepcopy(baseline)
+    counter = np.zeros(len(genotypes[0]))
+    for genotype in genotypes:
+        if np.array_equal(genotype, baseline):
+            continue
+        i = np.random.randint(len(genotype))
+        counter[i:] += 1
+        new_genotype[i:] = (new_genotype[i:] * counter[i:] + genotype[i:]) / (counter[i:] + 1)
+    
+    # Create a new controller with the new genotype
+    new_controller = player_controller(individuals[0].controller.n_hidden)
+    n_inputs = individuals[0].n_inputs
+    new_controller.set(new_genotype, n_inputs)
+    
+    # Create a new individual with the new controller
+    std = np.random.choice([individual.mutation_std for individual in individuals])
+    mutation_rate = np.random.choice([individual.mutation_rate for individual in individuals])
+    new_individual = Individual(new_controller, learnable_mutation={"mutation_std": std, "mutation_rate": mutation_rate})
+    
+    return new_individual
+
+
 def round_robin(pop, k = 10, choose_best = True):
     """
     Chooses k random controllers from the population and returns the best one.
@@ -241,6 +274,8 @@ def get_children(pop, p, n_parents, n_children, crossover_function):
     :param crossover_function: function, the function to use for crossover
     :return: list of individuals, the children of the population
     """
+    if isinstance(crossover_function, str):
+        crossover_function = globals()[crossover_function]
     candidates = get_best(pop, p)
     children = []
     while len(children) < len(pop)*p:
@@ -282,17 +317,34 @@ def mutate_population(pop, mutation_std, mutation_rate, mutation_prop):
             individual = mutate(individual, mutation_std, mutation_rate)
     return pop
 
-def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_parents, n_children):
+def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_parents, n_children, elitism, crossover_function = crossover_mixed):
     """
     Updates the population by removing the worst controllers and generating new children.
     :param pop: list of individuals, the population of controllers
     :param p: float, the proportion of controllers to remove
     :return: list of individuals, the updated population of controllers
     """
-    children = get_children(pop, p, n_parents, n_children, crossover_function = crossover_avg)
+    if elitism>0:
+        best = get_best(pop, elitism/len(pop))
     pop = remove_worst(pop, p)
+    children = get_children(pop, p, n_parents, n_children, crossover_function = crossover_function)
     pop += children
     pop = mutate_population(pop, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
+    
+    if elitism>0:
+        #Allow for the best to be mutated, but if they are, we save a copy of the original
+        best_possibly_mutated = mutate_population(best, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
+        possibly_mutated_geno = [individual.controller_to_genotype() for individual in best_possibly_mutated]
+        best_geno = [individual.controller_to_genotype() for individual in best]
+        counter =0
+        for i in range(len(best)):
+            if not np.array_equal(possibly_mutated_geno[i], best_geno[i]):
+                pop.append(best[i])
+                counter += 1
+        if counter > 0:
+            pop = remove_worst(pop, counter/len(pop))
+             
+        
     return pop
 
 def evolve(args, enemy, experiment_name):
@@ -310,6 +362,7 @@ def evolve(args, enemy, experiment_name):
     learnable_mutation=args.learnable_mutation
     n_parents = args.n_parents
     n_children = args.n_children
+    elitism = args.elitism #TODO: Implement elitisim
 
     
     # initializes simulation in individual evolution mode, for single static enemy.
@@ -323,7 +376,8 @@ def evolve(args, enemy, experiment_name):
                     visuals=False)
     
     # Initialize population
-    network_size = (env.get_num_sensors()+1) * n_hidden + (n_hidden+1)*5
+    n_inputs = env.get_num_sensors()
+    network_size = (n_inputs+1) * n_hidden + (n_hidden+1)*5
     if learnable_mutation:
         list_learnable_params = []
         for i in range(npop):
@@ -332,7 +386,7 @@ def evolve(args, enemy, experiment_name):
                                         
     else:
         list_learnable_params = [False] * npop
-    pop = [Individual(player_controller(n_hidden), list_learnable_params[i]) for i in range(npop)]
+    pop = [Individual(player_controller(n_hidden), list_learnable_params[i], n_inputs=n_inputs) for i in range(npop)]
     best_individual = pop[0]
     pop_init = np.random.uniform(-1, 1, (npop, network_size))
     n_inputs = env.get_num_sensors()
@@ -357,7 +411,8 @@ def evolve(args, enemy, experiment_name):
                                 mutation_rate = mutation_rate, 
                                 mutation_prop = mutation_prop, 
                                 n_parents = n_parents, 
-                                n_children = n_children)
+                                n_children = n_children, 
+                                elitism = elitism)
         for individual in pop:
                 individual.evaluate(env)   
         best_of_generation = max(pop, key=lambda x: x.fitness)

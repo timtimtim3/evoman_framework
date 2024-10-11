@@ -16,6 +16,8 @@ import numpy as np
 import os
 import random
 import optuna
+import pymysql
+pymysql.install_as_MySQLdb()
 
 from optimization_utils import Individual, evolve, update_population
 from plotter import *
@@ -49,7 +51,8 @@ def objective(trial):
     num_enemies = trial.suggest_int('Number of enemies', 2, 8)
     n_parents = trial.suggest_int('Number of parents', 2, 10)
     n_children = trial.suggest_int('Number of children', 2, 10)
-    
+    elitism = trial.suggest_int('Number of elitism', 0, 5)
+    crossover_function = trial.suggest_categorical('Crossover', ["crossover_mixed", "crossover_recombination", "crossover_avg"])
     print(f'pop_size {npop}, generations {n_generations}')
     
     value_range = list(range(1, 9))
@@ -114,7 +117,9 @@ def objective(trial):
                                 mutation_rate = mutation_rate, 
                                 mutation_prop = mutation_prop, 
                                 n_parents = n_parents, 
-                                n_children = n_children)
+                                n_children = n_children, 
+                                elitism = elitism, 
+                                crossover_fuction = crossover_function)
         for individual in pop:
                 individual.evaluate(env)  
         print(len(pop)) 

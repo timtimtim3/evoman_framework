@@ -107,8 +107,7 @@ if __name__ == '__main__':
     parser.add_argument('--algo_name', type=str, default='GA', help='Name of the algorithm')   
     parser.add_argument('--experiment_name', type=str, default='optimization_GA', help='Name of the experiment')
     parser.add_argument('--save', type=int, default=1, help='Whether to save the plots')
-
-
+    parser.add_argument('--elitism', type=int, default=1, help='If 0, no elitism is used, otherwise the amount given')
     args = parser.parse_args()
 
     main(args)
