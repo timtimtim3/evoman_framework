@@ -274,6 +274,8 @@ def get_children(pop, p, n_parents, n_children, crossover_function):
     :param crossover_function: function, the function to use for crossover
     :return: list of individuals, the children of the population
     """
+    if isinstance(crossover_function, str):
+        crossover_function = globals()[crossover_function]
     candidates = get_best(pop, p)
     children = []
     while len(children) < len(pop)*p:
@@ -315,7 +317,7 @@ def mutate_population(pop, mutation_std, mutation_rate, mutation_prop):
             individual = mutate(individual, mutation_std, mutation_rate)
     return pop
 
-def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_parents, n_children, elitism):
+def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_parents, n_children, elitism, crossover_function = crossover_mixed):
     """
     Updates the population by removing the worst controllers and generating new children.
     :param pop: list of individuals, the population of controllers
@@ -325,7 +327,7 @@ def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_pare
     if elitism>0:
         best = get_best(pop, elitism/len(pop))
     pop = remove_worst(pop, p)
-    children = get_children(pop, p, n_parents, n_children, crossover_function = crossover_mixed)
+    children = get_children(pop, p, n_parents, n_children, crossover_function = crossover_function)
     pop += children
     pop = mutate_population(pop, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
     
