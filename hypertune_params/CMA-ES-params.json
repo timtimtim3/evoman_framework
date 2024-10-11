@@ -1,0 +1,21 @@
+{
+   "enemy 1": true,
+   "enemy 2": false,
+   "enemy 3": false,
+   "enemy 4": true,
+   "enemy 5": false,
+   "enemy 6": true,
+   "enemy 7": true,
+   "enemy 8": true,
+   "sigma": 2.522150008349582,
+   "popsize": 91,
+   "CMA_mu": 19,
+   "CMA_rankmu": 1.8132346153438716,
+   "CMA_rankone": 0.6483112061588102,
+   "CMA_dampsvec_fac": 0.6850660105122497,
+   "CMA_active": false,
+   "CMA_mirrors": false,
+   "CMA_dampsvec_fade": 0.37511554543994446,
+   "minstd": 8.042498903327326e-07,
+   "maxstd": 0.72250590465662
+}
