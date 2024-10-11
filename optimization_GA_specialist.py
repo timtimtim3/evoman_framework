@@ -108,6 +108,13 @@ if __name__ == '__main__':
     parser.add_argument('--experiment_name', type=str, default='optimization_GA', help='Name of the experiment')
     parser.add_argument('--save', type=int, default=1, help='Whether to save the plots')
     parser.add_argument('--elitism', type=int, default=1, help='If 0, no elitism is used, otherwise the amount given')
+
+    parser.add_argument('--n_islands', type=int, default=4, help='Number of islands for migration')
+    parser.add_argument('--migration_interval', type=int, default=5, help='Number of generations between migrations')
+    parser.add_argument('--migration_rate', type=float, default=0.2, help='Proportion of individuals to migrate during migration')
+
+    parser.add_argument('--stagnation_threshold', type=int, default=15, help='Number of generations without improvement before doomsday')
+    parser.add_argument('--doomsday_survival_rate', type=float, default=0.2, help='Proportion of individuals to survive doomsday events')
     args = parser.parse_args()
 
     main(args)

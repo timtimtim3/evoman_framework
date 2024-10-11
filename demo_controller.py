@@ -19,7 +19,8 @@ class player_controller(Controller):
 
 	def set(self, controller, n_inputs):
 		# Number of hidden neurons
-		if isinstance(self.n_hidden[0], list): self.n_hidden = self.n_hidden[0]
+		while isinstance(self.n_hidden[0], list):
+			self.n_hidden = self.n_hidden[0]
 		if self.n_hidden[0] > 0:
 			# Preparing the weights and biases from the controller of layer 1
 
