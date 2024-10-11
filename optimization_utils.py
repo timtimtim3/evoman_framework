@@ -314,9 +314,11 @@ def evolve(args, enemy, experiment_name):
     n_islands = args.n_islands
     migration_interval = args.migration_interval
     migration_rate = args.migration_rate
-
     if n_islands <= 1 or migration_rate == 0:
         migration_interval == 0
+
+    stagnation_threshold = args.stagnation_threshold
+    doomsday_survival_rate = args.doomsday_survival_rate
 
     # initializes simulation in individual evolution mode, for single static enemy.
     env = Environment(experiment_name=experiment_name,
@@ -336,7 +338,7 @@ def evolve(args, enemy, experiment_name):
     network_size = (env.get_num_sensors()+1) * n_hidden + (n_hidden+1)*5
     if learnable_mutation:
         list_learnable_params = []
-        for i in range(npop):
+        for island in range(npop):
             list_learnable_params.append({"mutation_std": max(0.01, mutation_std+np.random.normal(0, mutation_std/10)), 
                                           "mutation_rate": max(0.01, mutation_rate+np.random.normal(0, mutation_std/10))})
                                         
@@ -344,11 +346,10 @@ def evolve(args, enemy, experiment_name):
         list_learnable_params = [False] * npop
 
     islands = []
-    for i in range(n_islands):
+    for island in range(n_islands):
         # Distribute extra individuals (remainder) to the first islands
-        current_island_size = pop_per_island + (1 if i < remainder else 0)
-
-        island_pop = [Individual(player_controller(n_hidden), list_learnable_params[i]) for i in range(current_island_size)]
+        current_island_size = pop_per_island + (1 if island < remainder else 0)
+        island_pop = [Individual(player_controller(n_hidden), list_learnable_params[ind]) for ind in range(current_island_size)]
         pop_init = np.random.uniform(-1, 1, (current_island_size, network_size))
         n_inputs = env.get_num_sensors()
         for j, individual in enumerate(island_pop):
@@ -363,14 +364,14 @@ def evolve(args, enemy, experiment_name):
         stds = [mutation_std]*n_generations
     #Evolve
     best_individual = islands[0][0]
-    for i in range(n_generations):
+    for island in range(n_generations):
         fitness = [individual.fitness for island in islands for individual in island]
         fit_tracker["max"].append(max(fitness))
         fit_tracker["mean"].append(np.mean(fitness))
         for island_pop in islands:
             island_pop = update_population(island_pop, 
                                     p = p, 
-                                    mutation_std = stds[i], 
+                                    mutation_std = stds[island], 
                                     mutation_rate = mutation_rate, 
                                     mutation_prop = mutation_prop, 
                                     n_parents = n_parents, 
@@ -379,7 +380,7 @@ def evolve(args, enemy, experiment_name):
                     individual.evaluate(env) 
 
         # Migration
-        if migration_interval and i % migration_interval == 0:
+        if migration_interval and island % migration_interval == 0:
             for j in range(n_islands):
                 # Select a portion of individuals to migrate from island j to the next island
                 n_migrants = int(len(islands[j]) * migration_rate)
@@ -389,13 +390,41 @@ def evolve(args, enemy, experiment_name):
                 # Add migrants to the next island and remove them from the current island
                 target_island.extend(migrants)
                 for migrant in migrants:
-                    islands[j].remove(migrant)  
+                    islands[j].remove(migrant)
 
-        best_of_generation = max([max(island, key=lambda x: x.fitness) for island in islands], key=lambda x: x.fitness)
+        all_individuals = [individual for island in islands for individual in island] 
+        best_of_generation = max(all_individuals, key=lambda x: x.fitness)
         if best_of_generation.fitness > best_individual.fitness:
             best_individual = best_of_generation
+            generations_since_improvement = 0
+        else:
+             generations_since_improvement += 1
 
-    # Flatten list of all individuals from all islands for return
-    final_pop = [individual for island in islands for individual in island]
+        # Trigger Doomsday if fitness stagnates
+        if stagnation_threshold and generations_since_improvement >= stagnation_threshold:    
+            all_individuals.sort(key=lambda x: x.fitness, reverse=True)  # Sort population by fitness
+            survivors = int(npop * doomsday_survival_rate)
+            new_population = all_individuals[:survivors]  # Keep only the top-performing individuals
 
-    return final_pop, fit_tracker, best_individual.controller_to_genotype()
+            # Fill the rest with new random individuals
+            new_random_individuals = [Individual(player_controller(n_hidden), list_learnable_params[ind]) for ind in range(npop - survivors)]
+            pop_init = np.random.uniform(-1, 1, (npop - survivors, network_size))
+            n_inputs = env.get_num_sensors()
+            for j, individual in enumerate(new_random_individuals):
+                individual.controller.set(pop_init[j], n_inputs)
+                individual.evaluate(env)
+            new_population.extend(new_random_individuals)
+
+            # Redistribute the new population across islands
+            np.random.shuffle(new_population)
+            islands = []
+            for j in range(n_islands):
+                current_island_size = pop_per_island + (1 if j < remainder else 0)
+                island_pop = new_population[:current_island_size]
+                new_population = new_population[current_island_size:]  # Remove assigned individuals from list
+                islands.append(island_pop)
+
+            generations_since_improvement = 0  # Reset stagnation counter after Doomsday
+
+    all_individuals = [individual for island in islands for individual in island] 
+    return all_individuals, fit_tracker, best_individual.controller_to_genotype()
