@@ -39,15 +39,66 @@ def simulation(env, x):
 def evaluate(env, x):
     return np.array(list(map(lambda y: simulation(env, y), x)))
 
+# def define_model(trial, env, n_hidden_neurons):
+#     # number of weights for multilayer with 10 hidden neurons
+#     n_vars = (env.get_num_sensors() + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
+#
+#     # params
+#     initial_guess = np.random.uniform(-1, 1, n_vars)
+#     sigma = trial.suggest_float("sigma", 0, 5) #idk what the size should be for sigma
+#     pop_size = trial.suggest_int("Population size", 10,100)
+#     es = cma.CMAEvolutionStrategy(initial_guess, sigma, {'popsize': pop_size})
+#
+#     return es
+
+
 def define_model(trial, env, n_hidden_neurons):
-    # number of weights for multilayer with 10 hidden neurons
+    # Number of weights for multilayer with hidden neurons
     n_vars = (env.get_num_sensors() + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
 
-    # params
+    # Define ranges for params
+    sigma = trial.suggest_float("sigma", 0.1, 5.0)  # Suggested range for sigma
+    pop_size = trial.suggest_int("Population size", 10, 100)  # Suggested range for population size
+    cma_mu = trial.suggest_int("CMA_mu", 2, pop_size // 2)  # Selection pressure
+    cma_rankmu = trial.suggest_float("CMA_rankmu", 0.5, 2.0)  # Multiplier for rank-mu update
+    cma_rankone = trial.suggest_float("CMA_rankone", 0.5, 2.0)  # Multiplier for rank-one update
+    cma_dampsvec_fac = trial.suggest_float("CMA_dampsvec_fac", 0.1, 1.0)  # Damping factor
+
+    # No tolerance needed because we train for fixed num iterations, CMA_stds only needed if we want
+    # different sigma for each input, but just tuning sigma is simpler
+    # tolstagnation = trial.suggest_int("tolstagnation", 50, 500)  # Stagnation tolerance
+    # cma_stds = trial.suggest_float("CMA_stds", 0.1, 1.0)  # Range for standard deviations
+    # tolx = trial.suggest_float("tolx", 1e-12, 1e-9)  # Tolerance in x-changes
+    # tolfun = trial.suggest_float("tolfun", 1e-12, 1e-9)  # Tolerance in function value
+
+    # Additional params
+    cma_active = trial.suggest_categorical("CMA_active", [True, False])  # Active covariance update
+    cma_mirrors = trial.suggest_categorical("CMA_mirrors", [True, False])  # Mirror sampling
+    cma_mirrormethod = trial.suggest_categorical("CMA_mirrormethod", [0, 1, 2]) if cma_mirrors else None  # Only used if mirrors are on
+    cma_dampsvec_fade = trial.suggest_float("CMA_dampsvec_fade", 0.01, 1.0)  # Fading damping factor
+    minstd = trial.suggest_float("minstd", 1e-12, 1e-6)  # Minimal std in any direction
+    maxstd = trial.suggest_float("maxstd", 0.1, 1.0)  # Maximal std
+
+    params = {
+        'popsize': pop_size,
+        'CMA_mu': cma_mu,
+        'CMA_rankmu': cma_rankmu,
+        'CMA_rankone': cma_rankone,
+        # 'CMA_stds': cma_stds,
+        'CMA_dampsvec_fac': cma_dampsvec_fac,
+        # 'tolx': tolx,
+        # 'tolfun': tolfun,
+        # 'tolstagnation': tolstagnation,
+        'CMA_active': cma_active,
+        'CMA_mirrors': cma_mirrors,
+        'CMA_mirrormethod': cma_mirrormethod,
+        'CMA_dampsvec_fade': cma_dampsvec_fade,
+        'minstd': minstd,
+        'maxstd': maxstd
+    }
+
     initial_guess = np.random.uniform(-1, 1, n_vars)
-    sigma = trial.suggest_float("sigma", 0, 5) #idk what the size should be for sigma
-    pop_size = trial.suggest_int("Population size", 10,100)
-    es = cma.CMAEvolutionStrategy(initial_guess, sigma, {'popsize': pop_size})
+    es = cma.CMAEvolutionStrategy(initial_guess, sigma, params)
 
     return es
 
