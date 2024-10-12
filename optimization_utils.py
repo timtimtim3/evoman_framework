@@ -370,6 +370,7 @@ def evolve(args, enemy, experiment_name):
     n_parents = args.n_parents
     n_children = args.n_children
     elitism = args.elitism 
+    crossover_function = args.crossover_function
 
     n_islands = args.n_islands
     migration_interval = args.migration_interval
@@ -437,7 +438,8 @@ def evolve(args, enemy, experiment_name):
                                 mutation_prop = mutation_prop, 
                                 n_parents = n_parents, 
                                 n_children = n_children, 
-                                elitism = elitism)
+                                elitism = elitism, 
+                                crossover_function=crossover_function)
             for individual in island_pop:
                 individual.evaluate(env)   
 

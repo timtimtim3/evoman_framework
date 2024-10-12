@@ -103,6 +103,15 @@ def objective(trial):
     else:
         stds = [mutation_std]*n_generations
     
+    if learnable_mutation:
+        list_learnable_params = []
+        for i in range(npop):
+            list_learnable_params.append({"mutation_std": max(0.01, mutation_std+np.random.normal(0, mutation_std/10)), 
+                                          "mutation_rate": max(0.01, mutation_rate+np.random.normal(0, mutation_std/10))})
+                                        
+    else:
+        list_learnable_params = [False] * npop
+
     # Initialize Islands
     pop_per_island = npop // n_islands
     remainder = npop % n_islands
@@ -129,7 +138,8 @@ def objective(trial):
                 speed="fastest",
                 visuals=False)
     
-
+    
+    
     print("Starting evolution")
     for i in range(n_generations):
         fitness = [individual.fitness for individual in pop]
