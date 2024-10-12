@@ -41,6 +41,7 @@ def objective(trial):
     n_hidden=10
     npop = trial.suggest_int('Population size', 10, 100)
     n_generations = trial.suggest_int('Generations', 100, 500)
+    # n_generations = 0
     p = trial.suggest_float('Proportion of individuals who get changed', 0, 1)
     mutation_std = trial.suggest_float('Standard deviation for mutation',0,5)
     mutation_std_end = trial.suggest_float('Ending standard deviation for mutation', 0, 1)
@@ -111,7 +112,7 @@ def objective(trial):
         fitness = [individual.fitness for individual in pop]
         fit_tracker["max"].append(max(fitness))
         fit_tracker["mean"].append(np.mean(fitness))
-        pop = update_population(pop, 
+        pop = update_population(pop = pop, 
                                 p = p, 
                                 mutation_std = stds[i], 
                                 mutation_rate = mutation_rate, 
@@ -136,9 +137,9 @@ def objective(trial):
             raise optuna.exceptions.TrialPruned()
 
     print(f'enemies {enemies}')
-    f, player, e, t = env2.play(pcont=best_individual)
+    f, player, e, t = env2.play(pcont=best_individual.controller_to_genotype())
     print(f'fitness against all enemies: {f}')
-    trial.set_user_attr('best_model_solution', best_individual.controller)
+    trial.set_user_attr('best_model_solution', best_individual.controller_to_genotype().tolist())
     trial.set_user_attr('fit_tracker', fit_tracker)
     return f
 
@@ -170,7 +171,7 @@ if __name__ == '__main__':
     if not os.path.exists(experiment_name):
         os.makedirs(experiment_name)
 
-    study = optuna.create_study(study_name='test', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/GA', load_if_exists=True)
+    study = optuna.create_study(study_name='test1', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/GA', load_if_exists=True)
 
     study.optimize(objective, n_trials=1, timeout=28800)
     experiment_name = 'test'

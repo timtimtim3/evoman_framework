@@ -32,26 +32,16 @@ import torch.utils.data
 # runs simulation
 def simulation(env, x):
     f, p, e, t = env.play(pcont=x)
-    return 0.9*(100 - e) + 0.1*p - np.log(t)
+    # print(p,e,t, 0.5*(100 - e) + 0.5*p - np.log(t))
+    if t <= 0:
+        t = 100
+    return 0.5*(100 - e) + 0.5*p - np.log(t)
     # return f
 
 
 # evaluation
 def evaluate(env, x):
     return np.array(list(map(lambda y: simulation(env, y), x)))
-
-# def define_model(trial, env, n_hidden_neurons):
-#     # number of weights for multilayer with 10 hidden neurons
-#     n_vars = (env.get_num_sensors() + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
-#
-#     # params
-#     initial_guess = np.random.uniform(-1, 1, n_vars)
-#     sigma = trial.suggest_float("sigma", 0, 5) #idk what the size should be for sigma
-#     pop_size = trial.suggest_int("Population size", 10,100)
-#     es = cma.CMAEvolutionStrategy(initial_guess, sigma, {'popsize': pop_size})
-#
-#     return es
-
 
 def define_model(trial, env, n_hidden_neurons):
     # Number of weights for multilayer with hidden neurons
@@ -121,6 +111,9 @@ def objective(trial):
         if tempenemies[i]:
             enemies.append(i+1) 
     
+    if len(enemies) < 2:
+        print('otherwise crashes sometimes ')
+        enemies = [1,2]
     trial.set_user_attr('enemies', enemies)
 
     n_hidden_neurons = 10
@@ -133,6 +126,7 @@ def objective(trial):
                       level=2,
                       speed="fastest",
                       visuals=False)
+    
     env2 = Environment(experiment_name=experiment_name,
                       enemies=[1,2,3,4,5,6,7,8],
                       playermode="ai",
@@ -155,6 +149,8 @@ def objective(trial):
     for generation in range(generations):
         solutions = model.ask()
         fitness_values = evaluate(env, solutions)
+        # print(solutions)
+        # print(fitness_values)
         model.tell(solutions, -fitness_values)  # Use negative because cma minimizes passed values but we want to
         # maximize fitness
 
@@ -170,7 +166,7 @@ def objective(trial):
             best_generation = generation + 1
 
         print(f'Generation {generation + 1}, best fitness: {current_best_fitness}')
-        f = simulation(env2, best_solution)
+        f = simulation(env2, current_best_solution)
         print(f'fitness against all enemies: {f}')
         trial.report(f, generation)
 
@@ -194,10 +190,9 @@ if __name__ == '__main__':
     if not os.path.exists(experiment_name):
         os.makedirs(experiment_name)
 
-    study = optuna.create_study(study_name='run1overnight', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
+    study = optuna.create_study(study_name='run3', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
 
-    study = optuna.load_study()
-    study.optimize(objective, n_trials=10000, timeout=28800)
+    study.optimize(objective, n_trials=10000, timeout=18000)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
