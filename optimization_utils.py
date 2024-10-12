@@ -92,10 +92,11 @@ def mutate(individual, mutation_std = 0.1, mutation_rate = 0.2):
     :param sigma: float, the standard deviation of the normal distribution
     :return: numpy array, the mutated controller
     """
-    controller = individual.controller
+    new_individual = deepcopy(individual)
+    controller = new_individual.controller
     if individual.learnable_mutation:
-        mutation_std = individual.mutation_std
-        mutation_rate = individual.mutation_rate
+        mutation_std = new_individual.mutation_std
+        mutation_rate = new_individual.mutation_rate
     p = [1-mutation_rate, mutation_rate]
     # Get the shape of the controller
     bias1_s = controller.bias1.shape
@@ -108,18 +109,15 @@ def mutate(individual, mutation_std = 0.1, mutation_rate = 0.2):
     r_weights1 = np.random.choice([0, 1], size=weights1_s, p=p) * np.random.normal(0, mutation_std, weights1_s)
     r_weights2 = np.random.choice([0, 1], size=weights2_s, p=p) * np.random.normal(0, mutation_std, weights2_s)
     # Change the weights of the controller
-    new_controller = clone_controller(controller)
-    new_controller.bias1    += r_bias1
-    new_controller.bias2    += r_bias2
-    new_controller.weights1 += r_weights1
-    new_controller.weights2 += r_weights2
-    # Update controller
-    individual.controller = new_controller
+    controller.bias1    += r_bias1
+    controller.bias2    += r_bias2
+    controller.weights1 += r_weights1
+    controller.weights2 += r_weights2
     # Mutate the mutation rate and std
-    if individual.learnable_mutation and np.random.uniform(0, 1) < individual.mutation_rate:
-        individual.mutation_std = max(0.01, mutation_std + np.random.normal(0, mutation_std/10))
-        individual.mutation_rate = max(0.01, mutation_rate + np.random.normal(0, mutation_std/10))
-    return individual
+    if new_individual.learnable_mutation and np.random.uniform(0, 1) < new_individual.mutation_rate:
+        new_individual.mutation_std = max(0.01, mutation_std + np.random.normal(0, mutation_std/10))
+        new_individual.mutation_rate = max(0.01, mutation_rate + np.random.normal(0, mutation_std/10))
+    return new_individual
 
 def crossover_avg(individuals, equal = True):
     # Neural network crossover in genetic algorithms using genetic programming - page 7
@@ -260,10 +258,21 @@ def get_best(pop, p=0.5):
     Gets the best controller from the population.
     :param pop: list of individuals, the population of controllers
     :param p: float, the proportion of controllers to consider
-    :return: Individual, the best controller
+    :return: list of Individuals, the best controller
     """
     N = len(pop)* p
     best = sorted(pop, key=lambda x: x.fitness, reverse=True)
+    return best[:int(N)]
+
+def get_worst(pop, p=0.5):
+    """
+    Gets the worst controller from the population.
+    :param pop: list of individuals, the population of controllers
+    :param p: float, the proportion of controllers to consider
+    :return: list of Individuals, the worst controller
+    """
+    N = len(pop)* p
+    best = sorted(pop, key=lambda x: x.fitness, reverse=False)
     return best[:int(N)]
 
 def get_children(pop, p, n_parents, n_children, crossover_function):
@@ -324,27 +333,25 @@ def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_pare
     :param p: float, the proportion of controllers to remove
     :return: list of individuals, the updated population of controllers
     """
+    pop = remove_worst(pop, p)
     if elitism>0:
         best = get_best(pop, elitism/len(pop))
-    pop = remove_worst(pop, p)
+        worst = get_worst(pop, elitism/len(pop))
     children = get_children(pop, p, n_parents, n_children, crossover_function = crossover_function)
     pop += children
-    pop = mutate_population(pop, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
-    
     if elitism>0:
         #Allow for the best to be mutated, but if they are, we save a copy of the original
-        best_possibly_mutated = mutate_population(best, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
-        possibly_mutated_geno = [individual.controller_to_genotype() for individual in best_possibly_mutated]
-        best_geno = [individual.controller_to_genotype() for individual in best]
-        counter =0
-        for i in range(len(best)):
-            if not np.array_equal(possibly_mutated_geno[i], best_geno[i]):
-                pop.append(best[i])
-                counter += 1
-        if counter > 0:
-            pop = remove_worst(pop, counter/len(pop))
-             
-        
+        amount_to_delete=0
+        for individual in best:
+            if np.random.uniform(0,1) < mutation_prop:
+                new_individual = mutate(individual)
+                pop.append(new_individual)
+                amount_to_delete+=1
+        for i in range(amount_to_delete):
+             pop.remove(worst[i])
+    pop_nobest = [p for p in pop if p not in best]
+    pop_nobest = mutate_population(pop_nobest, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
+    pop = best + pop_nobest
     return pop
 
 def evolve(args, enemy, experiment_name):
@@ -362,8 +369,16 @@ def evolve(args, enemy, experiment_name):
     learnable_mutation=args.learnable_mutation
     n_parents = args.n_parents
     n_children = args.n_children
-    elitism = args.elitism #TODO: Implement elitisim
+    elitism = args.elitism 
 
+    n_islands = args.n_islands
+    migration_interval = args.migration_interval
+    migration_rate = args.migration_rate
+    if n_islands <= 1 or migration_rate == 0:
+        migration_interval == 0
+
+    stagnation_threshold = args.stagnation_threshold
+    doomsday_survival_rate = args.doomsday_survival_rate
     
     # initializes simulation in individual evolution mode, for single static enemy.
     env = Environment(experiment_name=experiment_name,
@@ -375,6 +390,10 @@ def evolve(args, enemy, experiment_name):
                     speed="fastest",
                     visuals=False)
     
+    # Initialize Islands
+    pop_per_island = npop // n_islands
+    remainder = npop % n_islands
+
     # Initialize population
     n_inputs = env.get_num_sensors()
     network_size = (n_inputs+1) * n_hidden + (n_hidden+1)*5
@@ -386,12 +405,19 @@ def evolve(args, enemy, experiment_name):
                                         
     else:
         list_learnable_params = [False] * npop
-    pop = [Individual(player_controller(n_hidden), list_learnable_params[i], n_inputs=n_inputs) for i in range(npop)]
-    best_individual = pop[0]
-    pop_init = np.random.uniform(-1, 1, (npop, network_size))
-    n_inputs = env.get_num_sensors()
-    for i, individual in enumerate(pop):
-        individual.controller.set(pop_init[i], n_inputs)
+
+    islands = []
+    for i in range(n_islands):
+        # Distribute extra individuals (remainder) to the first islands
+        current_island_size = pop_per_island + (1 if i < remainder else 0)
+        island_pop = [Individual(player_controller(n_hidden), list_learnable_params[i], n_inputs=n_inputs) for i in range(current_island_size)]
+        pop_init = np.random.uniform(-1, 1, (current_island_size, network_size))
+        n_inputs = env.get_num_sensors()
+        for i, individual in enumerate(island_pop):
+            individual.controller.set(pop_init[i], n_inputs)
+            individual.evaluate(env)
+        islands.append(island_pop)
+    best_individual = islands[0][0]
 
     # Initialise std scheme
     if mutation_std_decreasing:
@@ -399,13 +425,12 @@ def evolve(args, enemy, experiment_name):
     else:
         stds = [mutation_std]*n_generations
     #Evolve
-    for individual in pop:
-            individual.evaluate(env)
     for i in range(n_generations):
-        fitness = [individual.fitness for individual in pop]
+        fitness = [individual.fitness for island in islands for individual in island]
         fit_tracker["max"].append(max(fitness))
         fit_tracker["mean"].append(np.mean(fitness))
-        pop = update_population(pop, 
+        for island_pop in islands:
+            island_pop = update_population(island_pop, 
                                 p = p, 
                                 mutation_std = stds[i], 
                                 mutation_rate = mutation_rate, 
@@ -413,10 +438,55 @@ def evolve(args, enemy, experiment_name):
                                 n_parents = n_parents, 
                                 n_children = n_children, 
                                 elitism = elitism)
-        for individual in pop:
+            for individual in island_pop:
                 individual.evaluate(env)   
-        best_of_generation = max(pop, key=lambda x: x.fitness)
+
+        # Migration
+        if migration_interval and i % migration_interval == 0:
+            for i in range(n_islands):
+                # Select a portion of individuals to migrate from island j to the next island
+                n_migrants = int(len(islands[i]) * migration_rate)
+                migrants = np.random.choice(islands[i], n_migrants, replace=False).tolist()
+                target_island = islands[(i + 1) % n_islands]  # Wrap around to the first island
+
+                # Add migrants to the next island and remove them from the current island
+                target_island.extend(migrants)
+                for migrant in migrants:
+                    islands[i].remove(migrant)
+
+        all_individuals = [individual for island in islands for individual in island] 
+        best_of_generation = max(all_individuals, key=lambda x: x.fitness)
         if best_of_generation.fitness > best_individual.fitness:
             best_individual = best_of_generation
+            generations_since_improvement = 0
+        else:
+             generations_since_improvement += 1
+
+        # Doomsday
+        if stagnation_threshold and generations_since_improvement >= stagnation_threshold: 
+            all_individuals.sort(key=lambda x: x.fitness, reverse=True)  # Sort population by fitness
+            survivors = int(npop * doomsday_survival_rate)
+            new_population = all_individuals[:survivors]  # Keep only the top-performing individuals
+
+            # Fill the rest with new random individuals
+            new_random_individuals = [Individual(player_controller(n_hidden), list_learnable_params[ind]) for ind in range(npop - survivors)]
+            pop_init = np.random.uniform(-1, 1, (npop - survivors, network_size))
+            n_inputs = env.get_num_sensors()
+            for j, individual in enumerate(new_random_individuals):
+                individual.controller.set(pop_init[j], n_inputs)
+                individual.evaluate(env)
+            new_population.extend(new_random_individuals)
+
+            # Redistribute the new population across islands
+            np.random.shuffle(new_population)
+            islands = []
+            for j in range(n_islands):
+                current_island_size = pop_per_island + (1 if j < remainder else 0)
+                island_pop = new_population[:current_island_size]
+                new_population = new_population[current_island_size:]  # Remove assigned individuals from list
+                islands.append(island_pop)
+
+            generations_since_improvement = 0  # Reset stagnation counter after Doomsday
     
-    return pop, fit_tracker, best_individual.controller_to_genotype()
+    all_individuals = [individual for island in islands for individual in island] 
+    return all_individuals, fit_tracker, best_individual.controller_to_genotype()
