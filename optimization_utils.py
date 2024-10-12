@@ -326,7 +326,7 @@ def mutate_population(pop, mutation_std, mutation_rate, mutation_prop):
             individual = mutate(individual, mutation_std, mutation_rate)
     return pop
 
-def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_parents, n_children, elitism, crossover_function = crossover_mixed):
+def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_parents, n_children, elitism, crossover_function = 'crossover_mixed'):
     """
     Updates the population by removing the worst controllers and generating new children.
     :param pop: list of individuals, the population of controllers
