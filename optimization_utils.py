@@ -92,10 +92,11 @@ def mutate(individual, mutation_std = 0.1, mutation_rate = 0.2):
     :param sigma: float, the standard deviation of the normal distribution
     :return: numpy array, the mutated controller
     """
-    controller = individual.controller
+    new_individual = deepcopy(individual)
+    controller = new_individual.controller
     if individual.learnable_mutation:
-        mutation_std = individual.mutation_std
-        mutation_rate = individual.mutation_rate
+        mutation_std = new_individual.mutation_std
+        mutation_rate = new_individual.mutation_rate
     p = [1-mutation_rate, mutation_rate]
     # Get the shape of the controller
     bias1_s = controller.bias1.shape
@@ -108,18 +109,15 @@ def mutate(individual, mutation_std = 0.1, mutation_rate = 0.2):
     r_weights1 = np.random.choice([0, 1], size=weights1_s, p=p) * np.random.normal(0, mutation_std, weights1_s)
     r_weights2 = np.random.choice([0, 1], size=weights2_s, p=p) * np.random.normal(0, mutation_std, weights2_s)
     # Change the weights of the controller
-    new_controller = clone_controller(controller)
-    new_controller.bias1    += r_bias1
-    new_controller.bias2    += r_bias2
-    new_controller.weights1 += r_weights1
-    new_controller.weights2 += r_weights2
-    # Update controller
-    individual.controller = new_controller
+    controller.bias1    += r_bias1
+    controller.bias2    += r_bias2
+    controller.weights1 += r_weights1
+    controller.weights2 += r_weights2
     # Mutate the mutation rate and std
-    if individual.learnable_mutation and np.random.uniform(0, 1) < individual.mutation_rate:
-        individual.mutation_std = max(0.01, mutation_std + np.random.normal(0, mutation_std/10))
-        individual.mutation_rate = max(0.01, mutation_rate + np.random.normal(0, mutation_std/10))
-    return individual
+    if new_individual.learnable_mutation and np.random.uniform(0, 1) < new_individual.mutation_rate:
+        new_individual.mutation_std = max(0.01, mutation_std + np.random.normal(0, mutation_std/10))
+        new_individual.mutation_rate = max(0.01, mutation_rate + np.random.normal(0, mutation_std/10))
+    return new_individual
 
 def crossover_avg(individuals, equal = True):
     # Neural network crossover in genetic algorithms using genetic programming - page 7
@@ -260,10 +258,21 @@ def get_best(pop, p=0.5):
     Gets the best controller from the population.
     :param pop: list of individuals, the population of controllers
     :param p: float, the proportion of controllers to consider
-    :return: Individual, the best controller
+    :return: list of Individuals, the best controller
     """
     N = len(pop)* p
     best = sorted(pop, key=lambda x: x.fitness, reverse=True)
+    return best[:int(N)]
+
+def get_worst(pop, p=0.5):
+    """
+    Gets the worst controller from the population.
+    :param pop: list of individuals, the population of controllers
+    :param p: float, the proportion of controllers to consider
+    :return: list of Individuals, the worst controller
+    """
+    N = len(pop)* p
+    best = sorted(pop, key=lambda x: x.fitness, reverse=False)
     return best[:int(N)]
 
 def get_children(pop, p, n_parents, n_children, crossover_function):
@@ -324,27 +333,25 @@ def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_pare
     :param p: float, the proportion of controllers to remove
     :return: list of individuals, the updated population of controllers
     """
+    pop = remove_worst(pop, p)
     if elitism>0:
         best = get_best(pop, elitism/len(pop))
-    pop = remove_worst(pop, p)
+        worst = get_worst(pop, elitism/len(pop))
     children = get_children(pop, p, n_parents, n_children, crossover_function = crossover_function)
     pop += children
-    pop = mutate_population(pop, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
-    
     if elitism>0:
         #Allow for the best to be mutated, but if they are, we save a copy of the original
-        best_possibly_mutated = mutate_population(best, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
-        possibly_mutated_geno = [individual.controller_to_genotype() for individual in best_possibly_mutated]
-        best_geno = [individual.controller_to_genotype() for individual in best]
-        counter =0
-        for i in range(len(best)):
-            if not np.array_equal(possibly_mutated_geno[i], best_geno[i]):
-                pop.append(best[i])
-                counter += 1
-        if counter > 0:
-            pop = remove_worst(pop, counter/len(pop))
-             
-        
+        amount_to_delete=0
+        for individual in best:
+            if np.random.uniform(0,1) < mutation_prop:
+                new_individual = mutate(individual)
+                pop.append(new_individual)
+                amount_to_delete+=1
+        for i in range(amount_to_delete):
+             pop.remove(worst[i])
+    pop_nobest = [p for p in pop if p not in best]
+    pop_nobest = mutate_population(pop_nobest, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
+    pop = best + pop_nobest
     return pop
 
 def evolve(args, enemy, experiment_name):
@@ -362,7 +369,7 @@ def evolve(args, enemy, experiment_name):
     learnable_mutation=args.learnable_mutation
     n_parents = args.n_parents
     n_children = args.n_children
-    elitism = args.elitism #TODO: Implement elitisim
+    elitism = args.elitism 
 
     n_islands = args.n_islands
     migration_interval = args.migration_interval
