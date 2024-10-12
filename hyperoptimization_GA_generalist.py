@@ -17,6 +17,7 @@ import os
 import random
 import optuna
 import pymysql
+from statistics import mean
 pymysql.install_as_MySQLdb()
 
 from optimization_utils import Individual, evolve, update_population
@@ -142,10 +143,10 @@ def objective(trial):
     
     
     print("Starting evolution")
+    generations_since_improvement = 0
     for i in range(n_generations):
-        fitness = [individual.fitness for individual in pop]
-        fit_tracker["max"].append(max(fitness))
-        fit_tracker["mean"].append(np.mean(fitness))
+        # fitness = [individual.fitness for individual in pop]
+        
         
         for island_pop in islands:
             island_pop = update_population(island_pop, 
@@ -173,13 +174,15 @@ def objective(trial):
                 for migrant in migrants:
                     islands[i].remove(migrant)
 
-        all_individuals = [individual for island in islands for individual in island] 
+        all_individuals = [individual for island in islands for individual in island]
         best_of_generation = max(all_individuals, key=lambda x: x.fitness)
+        fit_tracker["max"].append(best_of_generation.fitness)
+        fit_tracker["mean"].append(mean(individual.fitness for individual in all_individuals))
         if best_of_generation.fitness > best_individual.fitness:
             best_individual = best_of_generation
             generations_since_improvement = 0
         else:
-             generations_since_improvement += 1
+            generations_since_improvement += 1
 
         # Doomsday
         if stagnation_threshold and generations_since_improvement >= stagnation_threshold: 
