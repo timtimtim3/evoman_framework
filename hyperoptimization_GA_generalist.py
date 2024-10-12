@@ -54,14 +54,14 @@ def objective(trial):
     elitism = trial.suggest_int('Number of elitism', 0, 5)
     crossover_function = trial.suggest_categorical('Crossover', ["crossover_mixed", "crossover_recombination", "crossover_avg"])
     
-    n_islands = trial.suggest_int('Number of islands', 1, 6)
-    migration_interval = trial.suggest_int('Migration interval', 5, 100)
-    migration_rate = trial.suggest_float('Migration rate', 0, 1)
+    n_islands = trial.suggest_int('Number of islands', 1, 10)
+    migration_interval = trial.suggest_int('Migration interval', 5, 30)
+    migration_rate = trial.suggest_float('Migration rate', 0.05, 0.40)
     if n_islands <= 1 or migration_rate == 0:
         migration_interval == 0
 
-    stagnation_threshold = trial.suggest_int('Stagnation threshold', 0, 100)
-    doomsday_survival_rate = trial.suggest_float('Doomsday survival rate', 0.05, 1)
+    stagnation_threshold = trial.suggest_int('Stagnation threshold', 10, 50)
+    doomsday_survival_rate = trial.suggest_float('Doomsday survival rate', 0.05, 0.40)
     
     print(f'pop_size {npop}, generations {n_generations}')
 
