@@ -90,7 +90,7 @@ if __name__ == '__main__':
     # Command line arguments
     parser = argparse.ArgumentParser(description='Neuroevolution - Genetic Algorithm neural network.')
     #Current assignment is light version
-    parser.add_argument('--npop', type=int, default=100, help='Population size')
+    parser.add_argument('--npop', type=int, default=500, help='Population size')
     parser.add_argument('--n_generations', type=int, default=40, help='Number of generations')
     parser.add_argument('--p', type=float, default=0.5, help='Proportion of individuals who get changed')
     parser.add_argument('--mutation_std', type=float, default=1, help='Standard deviation for mutation')
@@ -108,7 +108,8 @@ if __name__ == '__main__':
     parser.add_argument('--experiment_name', type=str, default='optimization_GA', help='Name of the experiment')
     parser.add_argument('--save', type=int, default=1, help='Whether to save the plots')
     parser.add_argument('--elitism', type=int, default=1, help='If 0, no elitism is used, otherwise the amount given')
-
+    parser.add_argument('--crossover_function', type=str, default='crossover_avg', help='Type of crossover to use')
+    parser.add_argument('--k_round_robin', type=int, default=10, help='Number of individuals to play against each other')
     parser.add_argument('--n_islands', type=int, default=4, help='Number of islands for migration')
     parser.add_argument('--migration_interval', type=int, default=5, help='Number of generations between migrations')
     parser.add_argument('--migration_rate', type=float, default=0.2, help='Proportion of individuals to migrate during migration')

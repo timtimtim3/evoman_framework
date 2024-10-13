@@ -116,7 +116,7 @@ def mutate(individual, mutation_std = 0.1, mutation_rate = 0.2):
     # Mutate the mutation rate and std
     if new_individual.learnable_mutation and np.random.uniform(0, 1) < new_individual.mutation_rate:
         new_individual.mutation_std = max(0.01, mutation_std + np.random.normal(0, mutation_std/10))
-        new_individual.mutation_rate = max(0.01, mutation_rate + np.random.normal(0, mutation_std/10))
+        new_individual.mutation_rate = min(0.99, max(0.01, mutation_rate + np.random.normal(0, mutation_std/10)))
     return new_individual
 
 def crossover_avg(individuals, equal = True):
@@ -245,13 +245,18 @@ def round_robin(pop, k = 10, choose_best = True):
     :param choose_best: bool, whether to choose the best controller from the k controllers
     :return: Individual, the chosen controller
     """
-    # Choose k random controllers
-    chosen = np.random.choice(pop, k)
-    # Choose the best controller
-    if choose_best:
-        return max(chosen, key=lambda x: x.fitness)
+    if len(pop) == 0:
+        return pop
+    elif k >= len(pop):
+        return max(pop, key=lambda x: x.fitness)
     else:
-        return min(chosen, key=lambda x: x.fitness)
+        # Choose k random controllers
+        chosen = np.random.choice(pop, k)
+        # Choose the best controller
+        if choose_best:
+            return max(chosen, key=lambda x: x.fitness)
+        else:
+            return min(chosen, key=lambda x: x.fitness)
 
 def get_best(pop, p=0.5):
     """
@@ -275,7 +280,7 @@ def get_worst(pop, p=0.5):
     best = sorted(pop, key=lambda x: x.fitness, reverse=False)
     return best[:int(N)]
 
-def get_children(pop, p, n_parents, n_children, crossover_function):
+def get_children(pop, p, n_parents, n_children, crossover_function, k_round_robin):
     """
     Gets the children of the population using crossover.
     :param pop: list of individuals, the population of controllers
@@ -283,6 +288,9 @@ def get_children(pop, p, n_parents, n_children, crossover_function):
     :param crossover_function: function, the function to use for crossover
     :return: list of individuals, the children of the population
     """
+    if len(pop) <= 1:
+        return pop
+
     if isinstance(crossover_function, str):
         crossover_function = globals()[crossover_function]
     candidates = get_best(pop, p)
@@ -290,7 +298,7 @@ def get_children(pop, p, n_parents, n_children, crossover_function):
     while len(children) < len(pop)*p:
         parents = []
         for _ in range(n_parents):
-            parent = round_robin(candidates)
+            parent = round_robin(candidates, k_round_robin)
             parents.append(parent)
         for _ in range(n_children):
             child = crossover_function(parents)
@@ -299,7 +307,7 @@ def get_children(pop, p, n_parents, n_children, crossover_function):
                 break
     return children
 
-def remove_worst(pop,  p):
+def remove_worst(pop,  p, k_round_robin):
     """
     Removes the n worst controllers from the population using round robin.
     :param pop: list of individuals, the population of controllers
@@ -310,7 +318,7 @@ def remove_worst(pop,  p):
         return []
     N = len(pop)* p
     for _ in range(int(N)):
-        worst = round_robin(pop, choose_best = False)
+        worst = round_robin(pop, k_round_robin, choose_best = False)
         pop.remove(worst)
     return pop
 
@@ -326,18 +334,20 @@ def mutate_population(pop, mutation_std, mutation_rate, mutation_prop):
             individual = mutate(individual, mutation_std, mutation_rate)
     return pop
 
-def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_parents, n_children, elitism, crossover_function = 'crossover_mixed'):
+def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_parents, n_children, elitism, crossover_function, k_round_robin):
     """
     Updates the population by removing the worst controllers and generating new children.
     :param pop: list of individuals, the population of controllers
     :param p: float, the proportion of controllers to remove
     :return: list of individuals, the updated population of controllers
     """
-    pop = remove_worst(pop, p)
+    if len(pop) == 0:
+        return pop
+    pop = remove_worst(pop, p, k_round_robin)
     if elitism>0:
         best = get_best(pop, elitism/len(pop))
         worst = get_worst(pop, elitism/len(pop))
-    children = get_children(pop, p, n_parents, n_children, crossover_function = crossover_function)
+    children = get_children(pop, p, n_parents, n_children, crossover_function, k_round_robin)
     pop += children
     if elitism>0:
         #Allow for the best to be mutated, but if they are, we save a copy of the original
@@ -349,9 +359,11 @@ def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_pare
                 amount_to_delete+=1
         for i in range(amount_to_delete):
              pop.remove(worst[i])
-    pop_nobest = [p for p in pop if p not in best]
-    pop_nobest = mutate_population(pop_nobest, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
-    pop = best + pop_nobest
+        pop_nobest = [p for p in pop if p not in best]
+        pop_nobest = mutate_population(pop_nobest, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
+        pop = best + pop_nobest
+    else:
+        pop = mutate_population(pop, mutation_std = mutation_std, mutation_rate=mutation_rate, mutation_prop=mutation_prop)
     return pop
 
 def evolve(args, enemy, experiment_name):
@@ -371,6 +383,7 @@ def evolve(args, enemy, experiment_name):
     n_children = args.n_children
     elitism = args.elitism 
     crossover_function = args.crossover_function
+    k_round_robin = args.k_round_robin
 
     n_islands = args.n_islands
     migration_interval = args.migration_interval
@@ -408,10 +421,12 @@ def evolve(args, enemy, experiment_name):
         list_learnable_params = [False] * npop
 
     islands = []
+    j = 0
     for i in range(n_islands):
         # Distribute extra individuals (remainder) to the first islands
         current_island_size = pop_per_island + (1 if i < remainder else 0)
-        island_pop = [Individual(player_controller(n_hidden), list_learnable_params[i], n_inputs=n_inputs) for i in range(current_island_size)]
+        island_pop = [Individual(player_controller(n_hidden), list_learnable_params[i], n_inputs=n_inputs) for i in range(j, j+current_island_size)]
+        j += current_island_size
         pop_init = np.random.uniform(-1, 1, (current_island_size, network_size))
         n_inputs = env.get_num_sensors()
         for i, individual in enumerate(island_pop):
@@ -425,6 +440,7 @@ def evolve(args, enemy, experiment_name):
         stds = np.linspace(mutation_std, mutation_std_end, n_generations)
     else:
         stds = [mutation_std]*n_generations
+    generations_since_improvement = 0
     #Evolve
     for i in range(n_generations):
         fitness = [individual.fitness for island in islands for individual in island]
@@ -439,7 +455,8 @@ def evolve(args, enemy, experiment_name):
                                 n_parents = n_parents, 
                                 n_children = n_children, 
                                 elitism = elitism, 
-                                crossover_function=crossover_function)
+                                crossover_function=crossover_function,
+                                k_round_robin = k_round_robin)
             for individual in island_pop:
                 individual.evaluate(env)   
 

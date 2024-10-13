@@ -55,7 +55,7 @@ def objective(trial):
     n_children = trial.suggest_int('Number of children', 2, 10)
     elitism = trial.suggest_int('Number of elitism', 0, 5)
     crossover_function = trial.suggest_categorical('Crossover', ["crossover_mixed", "crossover_recombination", "crossover_avg"])
-    
+    k_round_robin = trial.suggest_int('K for round robin', 2, 30)
     n_islands = trial.suggest_int('Number of islands', 1, 10)
     migration_interval = trial.suggest_int('Migration interval', 5, 30)
     migration_rate = trial.suggest_float('Migration rate', 0.05, 0.40)
@@ -157,7 +157,8 @@ def objective(trial):
                                 n_parents = n_parents, 
                                 n_children = n_children, 
                                 elitism = elitism, 
-                                crossover_function=crossover_function)
+                                crossover_function=crossover_function,
+                                k_round_robin = k_round_robin)
             for individual in island_pop:
                 individual.evaluate(env)   
 
