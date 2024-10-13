@@ -39,8 +39,30 @@ import argparse
 def objective(trial):
     fit_tracker = {"max": [], "mean": []}
 
+    tempenemies = []
+    tempenemies.append(trial.suggest_categorical("enemy 1", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 2", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 3", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 4", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 5", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 6", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 7", [True, False]))
+    tempenemies.append(trial.suggest_categorical("enemy 8", [True, False]))
+    
+    enemies = []
+    for i in range(8):
+        if tempenemies[i]:
+            enemies.append(i+1) 
+    
+    if len(enemies) < 2:
+        print('otherwise crashes sometimes ')
+        enemies = [1,2]
+        trial.set_user_attr('failure', True)
+    trial.set_user_attr('enemies', enemies)
+
     n_hidden=10
     npop = trial.suggest_int('Population size', 10, 100)
+    npop= 100
     n_generations = trial.suggest_int('Generations', 100, 500)
     # n_generations = 0
     p = trial.suggest_float('Proportion of individuals who get changed', 0, 1)
@@ -55,30 +77,21 @@ def objective(trial):
     n_children = trial.suggest_int('Number of children', 2, 10)
     elitism = trial.suggest_int('Number of elitism', 0, 5)
     crossover_function = trial.suggest_categorical('Crossover', ["crossover_mixed", "crossover_recombination", "crossover_avg"])
+    
+    stagnation_threshold = trial.suggest_int('Stagnation threshold', 10, 50)
+    doomsday_survival_rate = trial.suggest_float('Doomsday survival rate', 0.05, 0.40)
+    
     k_round_robin = trial.suggest_int('K for round robin', 2, 30)
     n_islands = trial.suggest_int('Number of islands', 1, 10)
     migration_interval = trial.suggest_int('Migration interval', 5, 30)
     migration_rate = trial.suggest_float('Migration rate', 0.05, 0.40)
     if n_islands <= 1 or migration_rate == 0:
         migration_interval == 0
-
-    stagnation_threshold = trial.suggest_int('Stagnation threshold', 10, 50)
-    doomsday_survival_rate = trial.suggest_float('Doomsday survival rate', 0.05, 0.40)
-    
-    print(f'pop_size {npop}, generations {n_generations}')
-
-    value_range = list(range(1, 9))
-    
-    # Randomly sample unique integers without overlap
-    enemies = random.sample(value_range, num_enemies)   
-    
-    trial.set_user_attr('enemies', enemies)
-
     
     # initializes simulation in individual evolution mode, for single static enemy.
     env = Environment(experiment_name=experiment_name,
                     enemies=enemies,
-                    multiplemode='yes',
+                    multiplemode="yes",
                     playermode="ai",
                     player_controller=player_controller(n_hidden), # you  can insert your own controller here
                     enemymode="static",
@@ -86,25 +99,23 @@ def objective(trial):
                     speed="fastest",
                     visuals=False)
     
-    # Initialize population
-    network_size = (env.get_num_sensors()+1) * n_hidden + (n_hidden+1)*5
-    if learnable_mutation:
-        learnable_params = {"mutation_std": mutation_std, "mutation_rate": mutation_rate}
-    else:
-        learnable_params = False
-    pop = [Individual(player_controller(n_hidden), learnable_params) for _ in range(npop)]
-    best_individual = pop[0]
-    pop_init = np.random.uniform(-1, 1, (npop, network_size))
-    n_inputs = env.get_num_sensors()
-    for i, individual in enumerate(pop):
-        individual.controller.set(pop_init[i], n_inputs)
-
-    # Initialise std scheme
-    if mutation_std_decreasing:
-        stds = np.linspace(mutation_std, mutation_std_end, n_generations)
-    else:
-        stds = [mutation_std]*n_generations
+    env2 = Environment(experiment_name=experiment_name,
+                      enemies=[1,2,3,4,5,6,7,8],
+                      playermode="ai",
+                      multiplemode="yes",
+                      player_controller=player_controller(n_hidden),
+                      enemymode="static",
+                      level=2,
+                      speed="fastest",
+                      visuals=False)
     
+    # Initialize Islands
+    pop_per_island = npop // n_islands
+    remainder = npop % n_islands
+
+    # Initialize population
+    n_inputs = env.get_num_sensors()
+    network_size = (n_inputs+1) * n_hidden + (n_hidden+1)*5
     if learnable_mutation:
         list_learnable_params = []
         for i in range(npop):
@@ -114,13 +125,11 @@ def objective(trial):
     else:
         list_learnable_params = [False] * npop
 
-    # Initialize Islands
-    pop_per_island = npop // n_islands
-    remainder = npop % n_islands
     islands = []
     for i in range(n_islands):
         # Distribute extra individuals (remainder) to the first islands
         current_island_size = pop_per_island + (1 if i < remainder else 0)
+        print(list_learnable_params[i], 'kiki')
         island_pop = [Individual(player_controller(n_hidden), list_learnable_params[i], n_inputs=n_inputs) for i in range(current_island_size)]
         pop_init = np.random.uniform(-1, 1, (current_island_size, network_size))
         n_inputs = env.get_num_sensors()
@@ -130,24 +139,18 @@ def objective(trial):
         islands.append(island_pop)
     best_individual = islands[0][0]
 
-    env2 = Environment(experiment_name=experiment_name,
-                enemies=[1,2,3,4,5,6,7,8],
-                multiplemode='yes',
-                playermode="ai",
-                player_controller=player_controller(n_hidden), # you  can insert your own controller here
-                enemymode="static",
-                level=2,
-                speed="fastest",
-                visuals=False)
-    
-    
-    
-    print("Starting evolution")
+    # Initialise std scheme
+    if mutation_std_decreasing:
+        stds = np.linspace(mutation_std, mutation_std_end, n_generations)
+    else:
+        stds = [mutation_std]*n_generations
+
+    #Evolve
     generations_since_improvement = 0
     for i in range(n_generations):
-        # fitness = [individual.fitness for individual in pop]
-        
-        
+        fitness = [individual.fitness for island in islands for individual in island]
+        fit_tracker["max"].append(max(fitness))
+        fit_tracker["mean"].append(np.mean(fitness))
         for island_pop in islands:
             island_pop = update_population(island_pop, 
                                 p = p, 
@@ -175,10 +178,8 @@ def objective(trial):
                 for migrant in migrants:
                     islands[i].remove(migrant)
 
-        all_individuals = [individual for island in islands for individual in island]
+        all_individuals = [individual for island in islands for individual in island] 
         best_of_generation = max(all_individuals, key=lambda x: x.fitness)
-        fit_tracker["max"].append(best_of_generation.fitness)
-        fit_tracker["mean"].append(mean(individual.fitness for individual in all_individuals))
         if best_of_generation.fitness > best_individual.fitness:
             best_individual = best_of_generation
             generations_since_improvement = 0
