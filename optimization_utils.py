@@ -62,6 +62,9 @@ class Individual:
         if self.learnable_mutation:
             self.mutation_std = learnable_mutation["mutation_std"]
             self.mutation_rate = learnable_mutation["mutation_rate"]
+        else:
+            self.mutation_std = False
+            self.mutation_rate = False
 
     def controller_to_genotype(self):
         genotype = []
@@ -157,8 +160,10 @@ def crossover_avg(individuals, equal = True):
     new_controller.bias2    = avg_bias2
     new_controller.weights1 = avg_weights1
     new_controller.weights2 = avg_weights2
-    new_individual = Individual(new_controller, learnable_mutation={"mutation_std": avg_mutation_std, "mutation_rate": avg_mutation_rate})
-    return new_individual
+    if individuals[0].learnable_mutation:
+        return Individual(new_controller, learnable_mutation={"mutation_std": avg_mutation_std, "mutation_rate": avg_mutation_rate})
+    else:
+        return Individual(new_controller, learnable_mutation=False)
 
 def get_recombination(x):
     x = list(x)
@@ -200,10 +205,12 @@ def crossover_recombination(individuals):
     new_controller.weights1 = get_recombination(weights1)
     new_controller.weights2 = get_recombination(weights2)
     
-    std = np.random.choice([individual.mutation_std for individual in individuals])
-    mutation_rate = np.random.choice([individual.mutation_rate for individual in individuals])
-    new_individual = Individual(new_controller, learnable_mutation={"mutation_std": std, "mutation_rate": mutation_rate})
-    return new_individual
+    if individuals[0].learnable_mutation:
+        std = np.random.choice([individual.mutation_std for individual in individuals])
+        mutation_rate = np.random.choice([individual.mutation_rate for individual in individuals])
+        return Individual(new_controller, learnable_mutation={"mutation_std": std, "mutation_rate": mutation_rate})
+    else:
+        return Individual(new_controller, learnable_mutation=False)
 
 def crossover_mixed(individuals):
     """
@@ -230,11 +237,12 @@ def crossover_mixed(individuals):
     new_controller.set(new_genotype, n_inputs)
     
     # Create a new individual with the new controller
-    std = np.random.choice([individual.mutation_std for individual in individuals])
-    mutation_rate = np.random.choice([individual.mutation_rate for individual in individuals])
-    new_individual = Individual(new_controller, learnable_mutation={"mutation_std": std, "mutation_rate": mutation_rate})
-    
-    return new_individual
+    if individuals[0].learnable_mutation:
+        std = np.random.choice([individual.mutation_std for individual in individuals])
+        mutation_rate = np.random.choice([individual.mutation_rate for individual in individuals])
+        return Individual(new_controller, learnable_mutation={"mutation_std": std, "mutation_rate": mutation_rate})
+    else:
+        return Individual(new_controller, learnable_mutation=False)
 
 
 def round_robin(pop, k = 10, choose_best = True):
@@ -415,7 +423,7 @@ def evolve(args, enemy, experiment_name):
         list_learnable_params = []
         for i in range(npop):
             list_learnable_params.append({"mutation_std": max(0.01, mutation_std+np.random.normal(0, mutation_std/10)), 
-                                          "mutation_rate": max(0.01, mutation_rate+np.random.normal(0, mutation_std/10))})
+                                          "mutation_rate": min(0.99, max(0.01, mutation_rate+np.random.normal(0, mutation_std/10)))})
                                         
     else:
         list_learnable_params = [False] * npop

@@ -109,7 +109,7 @@ def objective(trial):
         list_learnable_params = []
         for i in range(npop):
             list_learnable_params.append({"mutation_std": max(0.01, mutation_std+np.random.normal(0, mutation_std/10)), 
-                                          "mutation_rate": max(0.01, mutation_rate+np.random.normal(0, mutation_std/10))})
+                                          "mutation_rate": min(0.99, max(0.01, mutation_rate+np.random.normal(0, mutation_std/10)))})
                                         
     else:
         list_learnable_params = [False] * npop
