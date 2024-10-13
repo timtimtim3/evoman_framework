@@ -81,6 +81,7 @@ def objective(trial):
     stagnation_threshold = trial.suggest_int('Stagnation threshold', 10, 50)
     doomsday_survival_rate = trial.suggest_float('Doomsday survival rate', 0.05, 0.40)
     
+    k_round_robin = trial.suggest_int('K for round robin', 2, 30)
     n_islands = trial.suggest_int('Number of islands', 1, 10)
     migration_interval = trial.suggest_int('Migration interval', 5, 30)
     migration_rate = trial.suggest_float('Migration rate', 0.05, 0.40)
@@ -159,7 +160,8 @@ def objective(trial):
                                 n_parents = n_parents, 
                                 n_children = n_children, 
                                 elitism = elitism, 
-                                crossover_function=crossover_function)
+                                crossover_function=crossover_function,
+                                k_round_robin = k_round_robin)
             for individual in island_pop:
                 individual.evaluate(env)   
 
