@@ -288,30 +288,32 @@ def get_worst(pop, p=0.5):
     best = sorted(pop, key=lambda x: x.fitness, reverse=False)
     return best[:int(N)]
 
-def get_children(pop, p, n_parents, n_children, crossover_function, k_round_robin):
+def get_children(pop, N, n_parents, n_children, crossover_function, k_round_robin):
     """
-    Gets the children of the population using crossover.
-    :param pop: list of individuals, the population of controllers
-    :param p_children: float, the proportion of children to generate
-    :param crossover_function: function, the function to use for crossover
-    :return: list of individuals, the children of the population
+    Generates children from a population using a specified crossover function.
+    :param pop: list, the current population of individuals
+    :param N: int, the number of children to generate
+    :param n_parents: int, the number of parents to use for generating each child
+    :param n_children: int, the number of children to generate per set of parents
+    :param crossover_function: function or str, the function to use for crossover, or the name of the function as a string
+    :param k_round_robin: int, the number of individuals to consider in each round-robin selection
+    :return: list, the generated children
     """
     if len(pop) <= 1:
         return pop
 
     if isinstance(crossover_function, str):
         crossover_function = globals()[crossover_function]
-    candidates = get_best(pop, p)
     children = []
-    while len(children) < len(pop)*p:
+    while len(children) < N:
         parents = []
         for _ in range(n_parents):
-            parent = round_robin(candidates, k_round_robin)
+            parent = round_robin(pop, k_round_robin)
             parents.append(parent)
         for _ in range(n_children):
             child = crossover_function(parents)
             children.append(child)
-            if len(children) == len(pop)*p:
+            if len(children) == N:
                 break
     return children
 
@@ -351,11 +353,12 @@ def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_pare
     """
     if len(pop) == 0:
         return pop
+    N = int(len(pop) *p)
     pop = remove_worst(pop, p, k_round_robin)
     if elitism>0:
         best = get_best(pop, elitism/len(pop))
         worst = get_worst(pop, elitism/len(pop))
-    children = get_children(pop, p, n_parents, n_children, crossover_function, k_round_robin)
+    children = get_children(pop, N, n_parents, n_children, crossover_function, k_round_robin)
     pop += children
     if elitism>0:
         #Allow for the best to be mutated, but if they are, we save a copy of the original
@@ -365,6 +368,7 @@ def update_population(pop, p, mutation_std, mutation_rate, mutation_prop, n_pare
                 new_individual = mutate(individual)
                 pop.append(new_individual)
                 amount_to_delete+=1
+        
         for i in range(amount_to_delete):
              pop.remove(worst[i])
         pop_nobest = [p for p in pop if p not in best]
