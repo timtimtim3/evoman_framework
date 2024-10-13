@@ -33,10 +33,10 @@ import torch.utils.data
 def simulation(env, x):
     f, p, e, t = env.play(pcont=x)
     # print(p,e,t, 0.5*(100 - e) + 0.5*p - np.log(t))
-    if t <= 0:
-        t = 100
-    return 0.5*(100 - e) + 0.5*p - np.log(t)
-    # return f
+    # if t <= 0:
+    #     t = 100
+    # return 0.9*(100 - e) + 0.1*p - np.log(t)
+    return f
 
 
 # evaluation
@@ -190,9 +190,9 @@ if __name__ == '__main__':
     if not os.path.exists(experiment_name):
         os.makedirs(experiment_name)
 
-    study = optuna.create_study(study_name='run3', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
+    study = optuna.create_study(study_name='run5', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
 
-    study.optimize(objective, n_trials=10000, timeout=18000)
+    study.optimize(objective, n_trials=10000, timeout=5*60*60)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
