@@ -129,10 +129,6 @@ def main(args):
             fit_tracker, best_model, best_fitness = train(args, enemy_group, generations, sigma, model_params=CMA_params)
             best_models.append(best_model)
             fit_trackers.append(fit_tracker)
-            temp = (best_model.tolist(), best_fitness)
-            os.makedirs('best_models/tim', exist_ok = True)
-            with open(f'best_models/tim/{i}', 'w') as json_file:
-                json.dump(temp, json_file, indent=3)
             
     
         save_evolution_data(fit_trackers, args.algo_name, enemy_group, target_directory=args.save_dir_evolution)
@@ -154,12 +150,17 @@ def main(args):
         mean_gains = []
         for i in range(args.n_experiments):
             individual_gains = []
-            for _ in range(5):
-                f, p, e, t = test_env.play(pcont=best_models[i])
-                individual_gain = p - e
-                individual_gains.append(individual_gain)
-            mean_gain = np.mean(individual_gains)
-            mean_gains.append(mean_gain)
+            # for _ in range(1):
+            f, p, e, t = test_env.play(pcont=best_models[i])
+            # individual_gain = p - e
+            # individual_gains.append(individual_gain)
+            # mean_gain = np.mean(individual_gains)
+            # mean_gains.append(mean_gain)
+
+            temp = (best_model[i].tolist(), f)
+            os.makedirs('best_models/tim', exist_ok = True)
+            with open(f'best_models/tim/{i}', 'w') as json_file:
+                json.dump(temp, json_file, indent=3)
 
         individual_gains_by_enemy_group[f"{args.algo_name} {enemy_group}"] = mean_gains
 
