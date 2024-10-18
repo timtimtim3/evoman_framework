@@ -38,7 +38,7 @@ def plot_evolution(fit_trackers, save=False, save_path="evolution_plot.png", sho
     plt.close()
 
 
-def plot_box(individual_gains, save=False, save_path="boxplot.png", show=False, save_dir="mean_gains"):
+def plot_box(individual_gains, save=False, save_path="boxplot.png", show=False, save_dir="mean_gains", rotation=90):
     # Plots a boxplot of the individual gains for each algorithm/enemy pair
     labels = list(individual_gains.keys())
     data = list(individual_gains.values())
@@ -49,7 +49,7 @@ def plot_box(individual_gains, save=False, save_path="boxplot.png", show=False, 
     # plt.title("Boxplot of Individual Gains by Algorithm/Enemy")
     plt.ylabel("Gains", fontsize =16)
 
-    plt.xticks(rotation=90, ha="right", fontsize =12)
+    plt.xticks(rotation=rotation, ha="right", fontsize =12)
     plt.yticks(fontsize =12)
     plt.tight_layout()
 
@@ -91,7 +91,7 @@ def plot_evolution3x3(target_directory="evolution_data", save=True, save_path="e
     fig, axs = plt.subplots(3, 3, figsize=(15, 15), sharey=True, sharex=True)
     if not os.path.exists(target_directory):
         os.makedirs(target_directory)
-    for i, algo_name in enumerate(algo_names)  :
+    for i, algo_name in enumerate(algo_names):
         for j in range(3):
             with open(f"{target_directory}/{algo_name}_enemy{j+1}_evolution_data.json", 'r') as json_file:
                 fit_trackers = json.load(json_file)
@@ -122,7 +122,6 @@ def plot_evolution3x3(target_directory="evolution_data", save=True, save_path="e
     # set x ticks:
     for ax in axs.flat:
         ax.set_xticks([1, 10, 20, 30, 40, 50])
-    
 
     handles, labels = axs[0, 0].get_legend_handles_labels()
     
@@ -133,3 +132,88 @@ def plot_evolution3x3(target_directory="evolution_data", save=True, save_path="e
         plt.savefig(save_path)
         print(f"Plot saved to {save_path}")
     plt.show()
+
+
+def plot_evolution_groups(algo_names, train_group_1, train_group_2, save=False, save_path="evolution_plot.png",
+                          show=False, save_dir="evolution_data_generalist", plot_spreads=True):
+    # Mapping group labels to their respective enemy lists
+    groups = {'A': train_group_1, 'B': train_group_2}
+    data = {}
+
+    for group_label, group_list in groups.items():
+        data[group_label] = {}
+        group_list_str = str(group_list)  # Converts list to string representation
+
+        for algo_name in algo_names:
+            # Since all files have '_evolution_data.json' as the extension
+            file_extension = '_evolution_data.json'
+
+            # Construct the file name
+            file_name = f"{algo_name}_enemy{group_list_str}{file_extension}"
+            file_path = os.path.join(save_dir, file_name)
+
+            # Load the evolution data if the file exists
+            if os.path.exists(file_path):
+                with open(file_path, 'r') as json_file:
+                    fit_trackers = json.load(json_file)
+                    data[group_label][algo_name] = fit_trackers
+                print(f"Loaded evolution data from {file_path}")
+            else:
+                print(f"File {file_path} not found")
+                data[group_label][algo_name] = None
+
+    # Create a figure with two subplots side by side for groups A and B
+    fig, axs = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
+
+    # Define colors for algorithms
+    algo_colors = {
+        'CMA-ES': '#1f77b4',  # Matplotlib's default blue
+        'GA': '#ff7f0e'       # Matplotlib's default orange
+    }
+
+    for idx, (group_label, group_data) in enumerate(data.items()):
+        ax = axs[idx]
+        for algo_name, fit_trackers in group_data.items():
+            if fit_trackers is None:
+                continue
+
+            # Extract mean and max fitness over generations
+            X = range(1, len(fit_trackers[0]['mean']) + 1)
+            means = np.array([f["mean"] for f in fit_trackers])
+            maxs = np.array([f["max"] for f in fit_trackers])
+            mean_mean = np.mean(means, axis=0)
+            std_mean = np.std(means, axis=0)
+            mean_max = np.mean(maxs, axis=0)
+            std_max = np.std(maxs, axis=0)
+
+            # Plot mean fitness
+            ax.plot(X, mean_mean, label=f"{algo_name} Mean Fitness", color=algo_colors[algo_name], linestyle='-')
+            if plot_spreads:
+                ax.fill_between(X, mean_mean - std_mean, mean_mean + std_mean, color=algo_colors[algo_name], alpha=0.3)
+                ax.fill_between(X, mean_mean - 2 * std_mean, mean_mean + 2 * std_mean, color=algo_colors[algo_name], alpha=0.2)
+
+            # Plot max fitness
+            ax.plot(X, mean_max, label=f"{algo_name} Max Fitness", color=algo_colors[algo_name], linestyle='--')
+            if plot_spreads:
+                ax.fill_between(X, mean_max - std_max, mean_max + std_max, color=algo_colors[algo_name], alpha=0.3)
+                ax.fill_between(X, mean_max - 2 * std_max, mean_max + 2 * std_max, color=algo_colors[algo_name], alpha=0.2)
+
+        ax.set_title(f"Group {group_label}")
+        ax.set_xlabel("Generation")
+        if idx == 0:
+            ax.set_ylabel("Fitness")
+        ax.legend()
+        ax.grid(True)
+
+    plt.tight_layout()
+    if save:
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        full_save_path = os.path.join(save_dir, save_path)
+        plt.savefig(full_save_path)
+        print(f"Plot saved to {full_save_path}")
+
+    if show:
+        plt.show()
+
+    plt.close()

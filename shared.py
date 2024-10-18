@@ -29,3 +29,9 @@ def load_hypertune_params(GA_path='hypertune_params/GA-params.json',
         if CMA_params.pop(f"enemy {i}"):
             enemy_group_CMA.append(i)
     return GA_params, CMA_params, enemy_groups
+
+
+def evaluate(model, test_env):
+    f, p, e, t = test_env.play(pcont=model)
+    gain = p - e
+    return gain

@@ -14,48 +14,17 @@ import numpy as np
 import os
 import cma
 from plotter import plot_evolution, plot_box, save_individual_gains, save_evolution_data
-
+from shared import load_hypertune_params
 
 # runs simulation
 def simulation(env, x):
     f, p, e, t = env.play(pcont=x)
     return f
 
-def load_json(file_path):
-    """
-    Loads a JSON file into a dictionary.
-
-    :param file_path: Path to the JSON file.
-    :return: A dictionary containing the data from the JSON file.
-    """
-    with open(file_path, 'r') as json_file:
-        data = json.load(json_file)
-    return data
-
-def load_hypertune_params(GA_path='hypertune_params/GA-params.json',
-                          CMA_path='hypertune_params/CMA-ES-params.json'):
-    GA_params = load_json(GA_path)
-    CMA_params = load_json(CMA_path)
-
-    enemy_group_GA = []
-    enemy_group_CMA = []
-
-    enemy_groups = {"CMA-ES": enemy_group_CMA, "GA": enemy_group_GA}
-    enemy_groups = {"CMA-ES": enemy_group_CMA}
-
-    for i in range(1, 9):
-        # Remove enemies from params and collect them in a single list
-        # if GA_params.pop(f"enemy {i}"):
-        #     enemy_group_GA.append(i)
-        #     print('kiki')
-        if CMA_params.pop(f"enemy {i}"):
-            enemy_group_CMA.append(i)
-            print("kaka")
-    return GA_params, CMA_params, enemy_groups
-
 # evaluation
 def evaluate(env, x):
     return np.array(list(map(lambda y: simulation(env, y), x)))
+
 
 def train(args, enemy_group, generations, sigma, model_params):
     # initializes simulation in individual evolution mode, for single static enemy.
@@ -103,6 +72,7 @@ def train(args, enemy_group, generations, sigma, model_params):
     print(f'Best final solution found in generation {best_generation} with fitness: {best_fitness}')
     return fit_tracker, best_solution, best_fitness
 
+
 def main(args):
     headless = True
     if headless:
@@ -114,9 +84,8 @@ def main(args):
     individual_gains_by_enemy_group = {}
 
     # Load hypertune params json files, split into two enemy groups
-    _, CMA_params, enemy_groups = load_hypertune_params()
-    # _, CMA_params, enemy_groups = load_hypertune_params(GA_path='hypertune_params/GA-params-short.json',
-    #                                                     CMA_path='hypertune_params/CMA-ES-params-short.json')
+    _, CMA_params, enemy_groups = load_hypertune_params(GA_path='hypertune_params/GA-params-short.json',
+                                                        CMA_path='hypertune_params/CMA-ES-params-short.json')
 
     # Remove generations and sigma
     generations = CMA_params.pop("generations")
@@ -127,15 +96,16 @@ def main(args):
 
         fit_trackers, best_models = [], []
         for i in range(args.n_experiments):
-            fit_tracker, best_model, best_fitness = train(args, enemy_group, generations, sigma, model_params=CMA_params)
+            fit_tracker, best_model, best_fitness = train(args, enemy_group, generations, sigma,
+                                                          model_params=CMA_params)
             best_models.append(best_model)
             fit_trackers.append(fit_tracker)
-            
-    
+
         save_evolution_data(fit_trackers, args.algo_name, enemy_group, target_directory=args.save_dir_evolution)
 
         print(fit_trackers)
-        plot_evolution(fit_trackers, save=bool(args.save), save_path=f"{args.algo_name}_enemy{enemy_group}_evolution.png",
+        plot_evolution(fit_trackers, save=bool(args.save),
+                       save_path=f"{args.algo_name}_enemy{enemy_group}_evolution.png",
                        save_dir=args.save_dir_evolution)
 
         test_env = Environment(experiment_name=args.experiment_name,
@@ -148,36 +118,34 @@ def main(args):
                                speed="fastest",
                                visuals=False)
 
-        mean_gains = []
+        individual_gains = []
         for i in range(args.n_experiments):
-            individual_gains = []
-            # for _ in range(1):
             f, p, e, t = test_env.play(pcont=best_models[i])
-            # individual_gain = p - e
-            # individual_gains.append(individual_gain)
-            # mean_gain = np.mean(individual_gains)
-            # mean_gains.append(mean_gain)
+            individual_gain = p - e
+            individual_gains.append(individual_gain)
 
-            # temp = (best_model[i].tolist(), f)
-            # os.makedirs('best_models/tim', exist_ok = True)
-            # with open(f'best_models/tim/{i}', 'w') as json_file:
-            #     json.dump(temp, json_file, indent=3)
-
-        individual_gains_by_enemy_group[f"{args.algo_name} {enemy_group}"] = mean_gains
-
-        # name = 'tournament_models_tim/'
-        # os.makedirs(name, exist_ok = True)
-        #
-        # path = name + str(enemy_group) + '.pkl'
-        #
-        # with open(path, 'wb') as f:
-        #     pickle.dump(best_models, f)
-        #     print("Finished dumping")
+        individual_gains_by_enemy_group[f"{args.algo_name} {enemy_group}"] = individual_gains
 
     print(individual_gains_by_enemy_group)
     save_individual_gains(individual_gains_by_enemy_group, algo_name=args.algo_name, save_dir=args.save_dir_gains)
     plot_box(individual_gains_by_enemy_group, save=bool(args.save), save_path=f"{args.algo_name}_boxplot.png",
              save_dir=args.save_dir_gains)
+
+    # for group, gains in individual_gains_by_enemy_group.items():
+    #
+    # for i in range(8):
+    #     test_env = Environment(experiment_name=args.experiment_name,
+    #                            enemies=[i + 1],
+    #                            playermode="ai",
+    #                            multiplemode="no",
+    #                            player_controller=player_controller(args.n_hidden_neurons),
+    #                            enemymode="static",
+    #                            level=2,
+    #                            speed="fastest",
+    #                            visuals=False)
+    #     f, p, e, t = test_env.play(pcont=best_models[i])
+
+
 
 
 if __name__ == '__main__':
@@ -186,7 +154,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--n_hidden_neurons', type=int, default=10,
                         help="Number of hidden neurons in the neural network.")
-    parser.add_argument('--n_experiments', type=int, default=1, help="Number of experiments to run.")
+    parser.add_argument('--n_experiments', type=int, default=10, help="Number of experiments to run.")
     parser.add_argument('--experiment_name', type=str, default='cma_es_optimization_specialist')
     parser.add_argument('--algo_name', type=str, default='CMA-ES')
     parser.add_argument('--save', type=int, default=1, help="0 for not saving plots 1 for yes")

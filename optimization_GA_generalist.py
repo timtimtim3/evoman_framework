@@ -53,7 +53,8 @@ def main(args):
     individual_gains_by_enemy_group = {}
 
     # Load hypertune params json files, split into two enemy groups
-    GA_params, _, enemy_groups = load_hypertune_params(GA_path='hypertune_params/GA-params-short.json')
+    GA_params, _, enemy_groups = load_hypertune_params(GA_path='hypertune_params/GA-params-short.json',
+                                                       CMA_path='hypertune_params/CMA-ES-params-short.json')
 
     GA_params = Params(GA_params)
 
@@ -85,17 +86,13 @@ def main(args):
                                speed="fastest",
                                visuals=False)
 
-        mean_gains = []
+        individual_gains = []
         for i in range(args.n_experiments):
-            individual_gains = []
-            for _ in range(5):
-                f, p, e, t = test_env.play(pcont=best_models[i])
-                individual_gain = p - e
-                individual_gains.append(individual_gain)
-            mean_gain = np.mean(individual_gains)
-            mean_gains.append(mean_gain)
+            f, p, e, t = test_env.play(pcont=best_models[i])
+            individual_gain = p - e
+            individual_gains.append(individual_gain)
 
-        individual_gains_by_enemy_group[f"{args.algo_name} {enemy_group}"] = mean_gains
+        individual_gains_by_enemy_group[f"{args.algo_name} {enemy_group}"] = individual_gains
 
     print(individual_gains_by_enemy_group)
     save_individual_gains(individual_gains_by_enemy_group, algo_name=args.algo_name, save_dir=args.save_dir_gains)
