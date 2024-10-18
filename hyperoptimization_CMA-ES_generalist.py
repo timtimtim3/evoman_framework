@@ -15,11 +15,13 @@ from demo_controller import player_controller
 import numpy as np
 import os
 import cma
+import cmaes
 from plotter import plot_evolution, plot_box, save_individual_gains, save_evolution_data
 import pymysql
 pymysql.install_as_MySQLdb()
 
 import optuna
+from optuna import pruners, samplers
 import random
 from optuna.trial import TrialState
 import torch
@@ -30,18 +32,25 @@ import torch.utils.data
 
 
 # runs simulation
-def simulation(env, x):
-    f, p, e, t = env.play(pcont=x)
+def simulation(env, x, enemies):
+    fitness = 0
+    for enemy in enemies:
+        f, p, e, t = env.run_single(enemy,pcont=x , econt=None)
+        fitness += f/len(enemies)
+        if p > 0:
+            fitness += 100/len(enemies) # divide to normalize
+        elif e > 0:
+            fitness -= 100/len(enemies)
     # print(p,e,t, 0.5*(100 - e) + 0.5*p - np.log(t))
     # if t <= 0:
     #     t = 100
     # return 0.9*(100 - e) + 0.1*p - np.log(t)
-    return f
+    return fitness
 
 
 # evaluation
-def evaluate(env, x):
-    return np.array(list(map(lambda y: simulation(env, y), x)))
+def evaluate(env, x, enemies):
+    return np.array(list(map(lambda y: simulation(env, y, enemies), x)))
 
 def define_model(trial, env, n_hidden_neurons):
     # Number of weights for multilayer with hidden neurons
@@ -148,7 +157,7 @@ def objective(trial):
 
     for generation in range(generations):
         solutions = model.ask()
-        fitness_values = evaluate(env, solutions)
+        fitness_values = evaluate(env, solutions, enemies)
         # print(solutions)
         # print(fitness_values)
         model.tell(solutions, -fitness_values)  # Use negative because cma minimizes passed values but we want to
@@ -166,20 +175,20 @@ def objective(trial):
             best_generation = generation + 1
 
         print(f'Generation {generation + 1}, best fitness: {current_best_fitness}')
-        f = simulation(env2, current_best_solution)
+        f, p, e, t = env2.play(pcont=current_best_solution)
         print(f'fitness against all enemies: {f}')
-        trial.report(f, generation)
+        trial.report(current_best_fitness, generation)
 
         # Handle pruning based on the intermediate value.
         if trial.should_prune():
             raise optuna.exceptions.TrialPruned()
     
     print(f'enemies {enemies}')
-    f = simulation(env2, best_solution)
+    f, p, e, t = env2.play(pcont=current_best_solution)
     print(f'fitness against all enemies: {f}')
     trial.set_user_attr('best_model_solution', best_solution.tolist())
     trial.set_user_attr('fit_tracker', fit_tracker)
-    return f
+    return best_fitness
     
 if __name__ == '__main__':    
     headless = True
@@ -190,9 +199,10 @@ if __name__ == '__main__':
     if not os.path.exists(experiment_name):
         os.makedirs(experiment_name)
 
-    study = optuna.create_study(study_name='run5', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
+    # study = optuna.create_study(study_name='run7newfitness1', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
+    study = optuna.create_study(study_name='run1justcmaes', sampler=samplers.CmaEsSampler(), direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
 
-    study.optimize(objective, n_trials=10000, timeout=5*60*60)
+    study.optimize(objective, n_trials=10000, timeout=4*60*60)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])

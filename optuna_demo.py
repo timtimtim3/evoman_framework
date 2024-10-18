@@ -1,4 +1,6 @@
 import optuna
+from optuna.trial import TrialState
+
 import pymysql
 pymysql.install_as_MySQLdb()
 from evoman.environment import Environment
@@ -10,10 +12,18 @@ import os
 
 
 
-study = optuna.create_study(study_name='run5', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
+# study = optuna.create_study(study_name='run1overnight', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
+study = optuna.create_study(study_name='run1', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/GA', load_if_exists=True)
 
+pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
+complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
+print("Study statistics: ")
+print("  Number of finished trials: ", len(study.trials))
+print("  Number of pruned trials: ", len(pruned_trials))
+print("  Number of complete trials: ", len(complete_trials))
+
+print("Best trial:")
 best_trial = study.best_trial
-print(best_trial.user_attrs["enemies"])
 
 print("  Value: ", best_trial.value)
 
@@ -21,8 +31,12 @@ print("  Params: ")
 for key, value in best_trial.params.items():
     print("    {}: {}".format(key, value))
 
+for key, value in best_trial.user_attrs.items():
+    print("    {}: {}".format(key, value))
+
+
 os.makedirs('hypertune_params', exist_ok = True)
-with open('hypertune_params/CMA-ES-params.json', 'w') as json_file:
+with open('hypertune_params/GA.json', 'w') as json_file:
     json.dump(best_trial.params, json_file, indent=3)
 
 controller = np.array(best_trial.user_attrs['best_model_solution'])
@@ -50,15 +64,16 @@ env = Environment(experiment_name='test',
 enemies = [1,2,3,4,5,6,7,8]
 means = []
 win = []
-# for enemy in enemies:
-#     env.update_parameter('enemies',[enemy])
-#     f, p, e, t = env.play(pcont=controller)
-#     if p > 0:
-#         # print("win")
-#         win.append(enemy)
-#     means.append()
-# print(f'fitness of {np.mean(means)} with {len(win)}/8 wins')
-# print(env2.play(pcont=controller))
+for enemy in enemies:
+    env.update_parameter('enemies',[enemy])
+    f, p, e, t = env.play(pcont=controller)
+    if p > 0:
+        print("win")
+        win.append(enemy)
+    print(f, p, e, t)
+    means.append(f)
+print(f'fitness of {np.mean(means)} with {len(win)}/8 wins')
+print(env2.play(pcont=controller))
 
 from optuna.visualization import plot_parallel_coordinate, plot_param_importances, plot_hypervolume_history,plot_pareto_front, plot_contour, plot_intermediate_values, plot_slice
 
@@ -67,8 +82,8 @@ params = ['sigma', 'Population size']
 # print(optuna.importance.get_param_importances(study))
 # plot_parallel_coordinate(study, params=params).show()
 # plot_param_importances(study, params=params).show()
-plot_slice(study, params=params).show()
-optuna.visualization.plot_optimization_history(study).show()
+# plot_slice(study, params=params).show()
+# optuna.visualization.plot_optimization_history(study).show()
 
 # # plot_hypervolume_history(study)
 # plot_contour(study, params=params).show()

@@ -62,9 +62,7 @@ def objective(trial):
 
     n_hidden=10
     npop = trial.suggest_int('Population size', 10, 100)
-    npop= 100
     n_generations = trial.suggest_int('Generations', 100, 500)
-    # n_generations = 0
     p = trial.suggest_float('Proportion of individuals who get changed', 0, 1)
     mutation_std = trial.suggest_float('Standard deviation for mutation',0,5)
     mutation_std_end = trial.suggest_float('Ending standard deviation for mutation', 0, 1)
@@ -72,7 +70,6 @@ def objective(trial):
     mutation_rate = trial.suggest_float('Mutation rate', 0, 1)
     mutation_prop= trial.suggest_float('Proportion of genes to mutate', 0, 1)
     learnable_mutation = trial.suggest_categorical('Whether to learn the mutation rate and std', [True, False])
-    num_enemies = trial.suggest_int('Number of enemies', 2, 8)
     n_parents = trial.suggest_int('Number of parents', 2, 10)
     n_children = trial.suggest_int('Number of children', 2, 10)
     elitism = trial.suggest_int('Number of elitism', 0, 5)
@@ -114,6 +111,7 @@ def objective(trial):
     remainder = npop % n_islands
 
     # Initialize population
+    print(npop)
     n_inputs = env.get_num_sensors()
     network_size = (n_inputs+1) * n_hidden + (n_hidden+1)*5
     if learnable_mutation:
@@ -129,7 +127,6 @@ def objective(trial):
     for i in range(n_islands):
         # Distribute extra individuals (remainder) to the first islands
         current_island_size = pop_per_island + (1 if i < remainder else 0)
-        print(list_learnable_params[i], 'kiki')
         island_pop = [Individual(player_controller(n_hidden), list_learnable_params[i], n_inputs=n_inputs) for i in range(current_island_size)]
         pop_init = np.random.uniform(-1, 1, (current_island_size, network_size))
         n_inputs = env.get_num_sensors()
@@ -163,7 +160,8 @@ def objective(trial):
                                 crossover_function=crossover_function,
                                 k_round_robin = k_round_robin)
             for individual in island_pop:
-                individual.evaluate(env)   
+                individual.evaluate(env)
+            # print('one island evaluated')
 
         # Migration
         if migration_interval and i % migration_interval == 0:
@@ -254,9 +252,9 @@ if __name__ == '__main__':
     if not os.path.exists(experiment_name):
         os.makedirs(experiment_name)
 
-    study = optuna.create_study(study_name='test1', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/GA', load_if_exists=True)
+    study = optuna.create_study(study_name='run1', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/GA', load_if_exists=True)
 
-    study.optimize(objective, n_trials=1, timeout=28800)
+    study.optimize(objective, n_trials=10000, timeout=1*60*60)
     experiment_name = 'test'
     if not os.path.exists(experiment_name):
         os.makedirs(experiment_name)

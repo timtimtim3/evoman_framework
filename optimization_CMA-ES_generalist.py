@@ -45,9 +45,10 @@ def load_hypertune_params(GA_path='hypertune_params/GA-params.json',
         # Remove enemies from params and collect them in a single list
         if GA_params.pop(f"enemy {i}"):
             enemy_group_GA.append(i)
+            print('kiki')
         if CMA_params.pop(f"enemy {i}"):
             enemy_group_CMA.append(i)
-
+            print("kaka")
     return GA_params, CMA_params, enemy_groups
 
 # evaluation
