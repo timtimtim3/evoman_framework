@@ -142,19 +142,29 @@ import random
 #     print(solution)
 #     f,p,e,t = env2.play(pcont=solution)
 
-tempenemies = []
-tempenemies.append(random.randint(0,1))
-tempenemies.append(random.randint(0,1))
-tempenemies.append(random.randint(0,1))
-tempenemies.append(random.randint(0,1))
-tempenemies.append(random.randint(0,1))
-tempenemies.append(random.randint(0,1))
-tempenemies.append(random.randint(0,1))
-tempenemies.append(random.randint(0,1))
+# tempenemies = []
+# tempenemies.append(random.randint(0,1))
+# tempenemies.append(random.randint(0,1))
+# tempenemies.append(random.randint(0,1))
+# tempenemies.append(random.randint(0,1))
+# tempenemies.append(random.randint(0,1))
+# tempenemies.append(random.randint(0,1))
+# tempenemies.append(random.randint(0,1))
+# tempenemies.append(random.randint(0,1))
 
-enemies = []
-for i in range(8):
-    if tempenemies[i]:
-        enemies.append(i+1) 
-print(tempenemies)
-print(enemies)
+# enemies = []
+# for i in range(8):
+#     if tempenemies[i]:
+#         enemies.append(i+1) 
+# print(tempenemies)
+# print(enemies)
+
+import numpy as np
+import os
+
+best_model = np.array([1,2,3,4,5])
+best_fitness = 99
+os.makedirs('best_models/mau', exist_ok = True)
+i = 0
+temp = (best_model, best_fitness)
+np.savetxt(f'best_models/mau/{i}.txt', temp, fmt='%f')

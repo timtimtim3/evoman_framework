@@ -41,12 +41,14 @@ def load_hypertune_params(GA_path='hypertune_params/GA-params.json',
     enemy_group_CMA = []
 
     enemy_groups = {"CMA-ES": enemy_group_CMA, "GA": enemy_group_GA}
+    enemy_groups = {"CMA-ES": enemy_group_CMA}
+
 
     for i in range(1, 9):
         # Remove enemies from params and collect them in a single list
-        if GA_params.pop(f"enemy {i}"):
-            enemy_group_GA.append(i)
-            print('kiki')
+        # if GA_params.pop(f"enemy {i}"):
+        #     enemy_group_GA.append(i)
+        #     print('kiki')
         if CMA_params.pop(f"enemy {i}"):
             enemy_group_CMA.append(i)
             print("kaka")
@@ -100,7 +102,7 @@ def train(args, enemy_group, generations, sigma, model_params):
         print(f'Generation {generation + 1}, best fitness: {current_best_fitness}')
 
     print(f'Best final solution found in generation {best_generation} with fitness: {best_fitness}')
-    return fit_tracker, best_solution
+    return fit_tracker, best_solution, best_fitness
 
 def main(args):
     headless = True
@@ -124,12 +126,15 @@ def main(args):
 
         fit_trackers, best_models = [], []
         for i in range(args.n_experiments):
-            fit_tracker, best_model = train(args, enemy_group, generations, sigma, model_params=CMA_params)
+            fit_tracker, best_model, best_fitness = train(args, enemy_group, generations, sigma, model_params=CMA_params)
             best_models.append(best_model)
             fit_trackers.append(fit_tracker)
+            temp = (best_model.tolist(), best_fitness)
             os.makedirs('best_models/tim', exist_ok = True)
-            with open(f'best_models/tim/{i}.json', 'w') as json_file:
-                json.dump(best_model.tolist(), json_file, indent=3)
+            with open(f'best_models/tim/{i}', 'w') as json_file:
+                json.dump(temp, json_file, indent=3)
+            
+    
         save_evolution_data(fit_trackers, args.algo_name, enemy_group, target_directory=args.save_dir_evolution)
 
         print(fit_trackers)
