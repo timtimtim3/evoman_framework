@@ -6,6 +6,7 @@
 ###############################################################################
 import argparse
 import json
+import pickle
 
 from evoman.environment import Environment
 from demo_controller import player_controller
@@ -119,6 +120,7 @@ def main(args):
     sigma = CMA_params.pop("sigma")
 
     for group_algo_name, enemy_group in enemy_groups.items():
+        print(enemy_group)
 
         fit_trackers, best_models = [], []
         for _ in range(args.n_experiments):
@@ -152,6 +154,13 @@ def main(args):
             mean_gains.append(mean_gain)
 
         individual_gains_by_enemy_group[f"{args.algo_name} {enemy_group}"] = mean_gains
+
+        name = 'tournament_models_tim' + str(enemy_group) + '.pkl'
+        os.makedirs(name, exist_ok = True)
+
+        with open(name, 'wb') as f:
+            pickle.dump(best_models, f)
+            print("Finished dumping")
 
     print(individual_gains_by_enemy_group)
     save_individual_gains(individual_gains_by_enemy_group, algo_name=args.algo_name, save_dir=args.save_dir_gains)
