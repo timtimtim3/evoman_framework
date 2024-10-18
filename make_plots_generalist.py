@@ -86,7 +86,7 @@ if __name__ == '__main__':
         save=True,
         show=True,
         save_dir=args.evolution_data_dir,
-        plot_spreads=False
+        plot_spreads=True
     )
 
     # Perform t-tests between CMA-ES and GA for each group
