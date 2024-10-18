@@ -123,10 +123,13 @@ def main(args):
         print(enemy_group)
 
         fit_trackers, best_models = [], []
-        for _ in range(args.n_experiments):
+        for i in range(args.n_experiments):
             fit_tracker, best_model = train(args, enemy_group, generations, sigma, model_params=CMA_params)
             best_models.append(best_model)
             fit_trackers.append(fit_tracker)
+            os.makedirs('best_models/tim', exist_ok = True)
+            with open(f'best_models/tim/{i}.json', 'w') as json_file:
+                json.dump(best_model.tolist(), json_file, indent=3)
         save_evolution_data(fit_trackers, args.algo_name, enemy_group, target_directory=args.save_dir_evolution)
 
         print(fit_trackers)
@@ -155,10 +158,12 @@ def main(args):
 
         individual_gains_by_enemy_group[f"{args.algo_name} {enemy_group}"] = mean_gains
 
-        name = 'tournament_models_tim' + str(enemy_group) + '.pkl'
+        name = 'tournament_models_tim/'
         os.makedirs(name, exist_ok = True)
 
-        with open(name, 'wb') as f:
+        path = name + str(enemy_group) + '.pkl'
+
+        with open(path, 'wb') as f:
             pickle.dump(best_models, f)
             print("Finished dumping")
 
