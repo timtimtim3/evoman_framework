@@ -32,25 +32,14 @@ import torch.utils.data
 
 
 # runs simulation
-def simulation(env, x, enemies):
-    fitness = 0
-    for enemy in enemies:
-        f, p, e, t = env.run_single(enemy,pcont=x , econt=None)
-        fitness += f/len(enemies)
-        if p > 0:
-            fitness += 100/len(enemies) # divide to normalize
-        elif e > 0:
-            fitness -= 100/len(enemies)
-    # print(p,e,t, 0.5*(100 - e) + 0.5*p - np.log(t))
-    # if t <= 0:
-    #     t = 100
-    # return 0.9*(100 - e) + 0.1*p - np.log(t)
-    return fitness
+def simulation(env,x):
+    f,p,e,t = env.play(pcont=x)
+    return f
 
 
 # evaluation
-def evaluate(env, x, enemies):
-    return np.array(list(map(lambda y: simulation(env, y, enemies), x)))
+def evaluate(env, x):
+    return np.array(list(map(lambda y: simulation(env, y), x)))
 
 def define_model(trial, env, n_hidden_neurons):
     # Number of weights for multilayer with hidden neurons
@@ -91,10 +80,6 @@ def define_model(trial, env, n_hidden_neurons):
         'CMA_dampsvec_fade': cma_dampsvec_fade,
         'minstd': minstd,
         'maxstd': maxstd
-        # 'CMA_stds': cma_stds,
-        # 'tolx': tolx,
-        # 'tolfun': tolfun,
-        # 'tolstagnation': tolstagnation,
     }
 
     initial_guess = np.random.uniform(-1, 1, n_vars)
@@ -104,7 +89,6 @@ def define_model(trial, env, n_hidden_neurons):
 
 
 def objective(trial):
-    # num_enemies = trial.suggest_int('Number of enemies', 2, 8)
     tempenemies = []
     tempenemies.append(trial.suggest_categorical("enemy 1", [True, False]))
     tempenemies.append(trial.suggest_categorical("enemy 2", [True, False]))
@@ -157,7 +141,7 @@ def objective(trial):
 
     for generation in range(generations):
         solutions = model.ask()
-        fitness_values = evaluate(env, solutions, enemies)
+        fitness_values = evaluate(env, solutions)
         # print(solutions)
         # print(fitness_values)
         model.tell(solutions, -fitness_values)  # Use negative because cma minimizes passed values but we want to
@@ -199,10 +183,9 @@ if __name__ == '__main__':
     if not os.path.exists(experiment_name):
         os.makedirs(experiment_name)
 
-    # study = optuna.create_study(study_name='run7newfitness1', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
-    study = optuna.create_study(study_name='run1justcmaes', sampler=samplers.CmaEsSampler(), direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
+    study = optuna.create_study(study_name='run1overnight', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
 
-    study.optimize(objective, n_trials=10000, timeout=4*60*60)
+    study.optimize(objective, n_trials=10000, timeout=8*60*60)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
@@ -219,5 +202,3 @@ if __name__ == '__main__':
     print("  Params: ")
     for key, value in trial.params.items():
         print("    {}: {}".format(key, value))
-    
-    # print(optuna.importance.get_param_importances(study))

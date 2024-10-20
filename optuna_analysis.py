@@ -11,7 +11,7 @@ import json
 import os
 
 
-
+#comment out which algorithm ur not using
 # study = optuna.create_study(study_name='run1overnight', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/CMAES', load_if_exists=True)
 study = optuna.create_study(study_name='run1', direction="maximize", storage='mysql+pymysql://root:UbuntuMau@localhost/GA', load_if_exists=True)
 
@@ -75,19 +75,50 @@ for enemy in enemies:
 print(f'fitness of {np.mean(means)} with {len(win)}/8 wins')
 print(env2.play(pcont=controller))
 
-from optuna.visualization import plot_parallel_coordinate, plot_param_importances, plot_hypervolume_history,plot_pareto_front, plot_contour, plot_intermediate_values, plot_slice
+from optuna.visualization import plot_optimization_history, plot_parallel_coordinate, plot_param_importances, plot_hypervolume_history,plot_pareto_front, plot_contour, plot_intermediate_values, plot_slice
+# useful params for visualization
+GA_params = [
+    "Population size",
+    "Proportion of individuals who get changed",
+    "Standard deviation for mutation",
+    "Ending standard deviation for mutation",
+    "Whether the mutation rate is decreasing",
+    "Mutation rate",
+    "Proportion of genes to mutate",
+    "Whether to learn the mutation rate and std",
+    "Number of parents",
+    "Number of children",
+    "Number of elitism",
+    "Crossover",
+    "Stagnation threshold",
+    "Doomsday survival rate",
+    "K for round robin",
+    "Number of islands",
+    "Migration interval",
+    "Migration rate"
+]
+CMAES_params = [
+    "sigma",
+    "Population size",
+    "CMA_mu",
+    "CMA_rankmu",
+    "CMA_rankone",
+    "CMA_dampsvec_fac",
+    "CMA_active",
+    "CMA_mirrors",
+    "CMA_mirrormethod",
+    "CMA_dampsvec_fade",
+    "minstd",
+    "maxstd",
+]
 
-params =['enemy 1', 'enemy 2', 'enemy 3', 'enemy 4', 'enemy 5', 'enemy 6', 'enemy 7', 'enemy 8']
-params = ['sigma', 'Population size']
-# print(optuna.importance.get_param_importances(study))
-# plot_parallel_coordinate(study, params=params).show()
-# plot_param_importances(study, params=params).show()
-# plot_slice(study, params=params).show()
-# optuna.visualization.plot_optimization_history(study).show()
 
-# # plot_hypervolume_history(study)
-# plot_contour(study, params=params).show()
-# plot_intermediate_values(study).show()
-
-
-# plotter.plot_evolution([best_trial.user_attrs['fit_tracker']],show=True)
+# Visualizations used to make conclusions about importances
+print(optuna.importance.get_param_importances(study))
+plot_parallel_coordinate(study, params=GA_params).show()
+plot_param_importances(study, params=GA_params).show()
+plot_slice(study, params=GA_params).show()
+plot_optimization_history(study).show()
+plot_hypervolume_history(study)
+plot_contour(study, params=GA_params).show()
+plot_intermediate_values(study).show()
