@@ -133,19 +133,33 @@ def plot_evolution3x3(target_directory="evolution_data", save=True, save_path="e
         print(f"Plot saved to {save_path}")
     plt.show()
 
-
 def plot_evolution_groups(algo_names, train_group_1, train_group_2, save=False, save_path="evolution_plot.png",
                           show=False, save_dir="evolution_data_generalist", plot_spreads=True):
+    """
+    Plots the evolution of fitness over generations for different algorithms across two groups.
+
+    Parameters:
+    - algo_names (list): List of algorithm names (e.g., ['GA', 'CMA-ES']).
+    - train_group_1 (list): Enemy list for group A.
+    - train_group_2 (list): Enemy list for group B.
+    - save (bool): Whether to save the plot as an image file.
+    - save_path (str): Filename for the saved plot.
+    - show (bool): Whether to display the plot.
+    - save_dir (str): Directory where evolution data and plots are saved.
+    - plot_spreads (bool): Whether to plot standard deviation spreads.
+    """
+
     # Mapping group labels to their respective enemy lists
     groups = {'A': train_group_1, 'B': train_group_2}
     data = {}
 
+    # Load evolution data for each group and algorithm
     for group_label, group_list in groups.items():
         data[group_label] = {}
         group_list_str = str(group_list)  # Converts list to string representation
 
         for algo_name in algo_names:
-            # Since all files have '_evolution_data.json' as the extension
+            # All files have '_evolution_data.json' as the extension
             file_extension = '_evolution_data.json'
 
             # Construct the file name
@@ -163,12 +177,16 @@ def plot_evolution_groups(algo_names, train_group_1, train_group_2, save=False, 
                 data[group_label][algo_name] = None
 
     # Create a figure with two subplots side by side for groups A and B
-    fig, axs = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
+    # Set sharey=False to allow independent y-axes
+    fig, axs = plt.subplots(1, 2, figsize=(18, 8), sharey=False)
 
-    # Define colors for algorithms
-    algo_colors = {
-        'CMA-ES': '#1f77b4',  # Matplotlib's default blue
-        'GA': '#ff7f0e'       # Matplotlib's default orange
+    # Define distinct colors for each metric of each algorithm
+    # Ensure that all four colors are clearly distinguishable
+    color_mapping = {
+        'GA_mean': '#1f77b4',  # Dark Blue
+        'GA_max': '#005f9e',  # Vibrant Blue
+        'CMA-ES_mean': '#d62728',  # Dark Red
+        'CMA-ES_max': '#a50f15'  # Vibrant Red
     }
 
     for idx, (group_label, group_data) in enumerate(data.items()):
@@ -186,34 +204,51 @@ def plot_evolution_groups(algo_names, train_group_1, train_group_2, save=False, 
             mean_max = np.mean(maxs, axis=0)
             std_max = np.std(maxs, axis=0)
 
-            # Plot mean fitness
-            ax.plot(X, mean_mean, label=f"{algo_name} Mean Fitness", color=algo_colors[algo_name], linestyle='-')
-            if plot_spreads:
-                ax.fill_between(X, mean_mean - std_mean, mean_mean + std_mean, color=algo_colors[algo_name], alpha=0.3)
-                ax.fill_between(X, mean_mean - 2 * std_mean, mean_mean + 2 * std_mean, color=algo_colors[algo_name], alpha=0.2)
+            # Determine colors based on algorithm and metric
+            color_mean = color_mapping.get(f"{algo_name}_mean", '#000000')  # Default to black
+            color_max = color_mapping.get(f"{algo_name}_max", '#555555')  # Default to dark gray
 
-            # Plot max fitness
-            ax.plot(X, mean_max, label=f"{algo_name} Max Fitness", color=algo_colors[algo_name], linestyle='--')
-            if plot_spreads:
-                ax.fill_between(X, mean_max - std_max, mean_max + std_max, color=algo_colors[algo_name], alpha=0.3)
-                ax.fill_between(X, mean_max - 2 * std_max, mean_max + 2 * std_max, color=algo_colors[algo_name], alpha=0.2)
+            # Plot mean fitness with a solid line
+            ax.plot(X, mean_mean, label=f"{algo_name} Mean Fitness",
+                    color=color_mean, linestyle='-', linewidth=2)
 
-        ax.set_title(f"Group {group_label}")
-        ax.set_xlabel("Generation")
+            if plot_spreads:
+                ax.fill_between(X, mean_mean - std_mean, mean_mean + std_mean,
+                                color=color_mean, alpha=0.3)
+                # ax.fill_between(X, mean_mean - 2 * std_mean, mean_mean + 2 * std_mean,
+                #                 color=color_mean, alpha=0.2)
+
+            # Plot max fitness with a solid line
+            ax.plot(X, mean_max, label=f"{algo_name} Max Fitness",
+                    color=color_max, linestyle='-', linewidth=2)
+
+            if plot_spreads:
+                ax.fill_between(X, mean_max - std_max, mean_max + std_max,
+                                color=color_max, alpha=0.3)
+                # ax.fill_between(X, mean_max - 2 * std_max, mean_max + 2 * std_max,
+                #                 color=color_max, alpha=0.2)
+
+        ax.set_title(f"Group {group_label}", fontsize=18)
+        ax.set_xlabel("Generation", fontsize=14)
         if idx == 0:
-            ax.set_ylabel("Fitness")
-        ax.legend()
-        ax.grid(True)
+            ax.set_ylabel("Fitness", fontsize=14)
+        else:
+            # Optionally, you can add a y-label to the second subplot as well
+            ax.set_ylabel("Fitness", fontsize=14)
+        ax.legend(fontsize=12)
+        ax.grid(True, linestyle='--', alpha=0.7)
 
     plt.tight_layout()
     if save:
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         full_save_path = os.path.join(save_dir, save_path)
-        plt.savefig(full_save_path)
+        plt.savefig(full_save_path, dpi=300)
         print(f"Plot saved to {full_save_path}")
 
     if show:
         plt.show()
 
     plt.close()
+
+
