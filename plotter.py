@@ -133,6 +133,7 @@ def plot_evolution3x3(target_directory="evolution_data", save=True, save_path="e
         print(f"Plot saved to {save_path}")
     plt.show()
 
+
 def plot_evolution_groups(algo_names, train_group_1, train_group_2, save=False, save_path="evolution_plot.png",
                           show=False, save_dir="evolution_data_generalist", plot_spreads=True):
     """
@@ -215,6 +216,7 @@ def plot_evolution_groups(algo_names, train_group_1, train_group_2, save=False, 
             if plot_spreads:
                 ax.fill_between(X, mean_mean - std_mean, mean_mean + std_mean,
                                 color=color_mean, alpha=0.3)
+                # Uncomment the following lines if you want to include double standard deviation
                 # ax.fill_between(X, mean_mean - 2 * std_mean, mean_mean + 2 * std_mean,
                 #                 color=color_mean, alpha=0.2)
 
@@ -225,20 +227,27 @@ def plot_evolution_groups(algo_names, train_group_1, train_group_2, save=False, 
             if plot_spreads:
                 ax.fill_between(X, mean_max - std_max, mean_max + std_max,
                                 color=color_max, alpha=0.3)
+                # Uncomment the following lines if you want to include double standard deviation
                 # ax.fill_between(X, mean_max - 2 * std_max, mean_max + 2 * std_max,
                 #                 color=color_max, alpha=0.2)
 
+        # Set titles and labels
         ax.set_title(f"Group {group_label}", fontsize=18)
         ax.set_xlabel("Generation", fontsize=14)
-        if idx == 0:
-            ax.set_ylabel("Fitness", fontsize=14)
-        else:
-            # Optionally, you can add a y-label to the second subplot as well
-            ax.set_ylabel("Fitness", fontsize=14)
-        ax.legend(fontsize=12)
+        ax.set_ylabel("Fitness", fontsize=14)
+
+        # Add legend only to the right-hand subplot (index 1)
+        if idx == 1:
+            legend = ax.legend(fontsize=16, title="Metrics", title_fontsize=18, loc='best')
+            legend.get_frame().set_edgecolor('black')  # Add a border to the legend
+            legend.get_frame().set_linewidth(1.5)  # Set the border width
+
+        # Add grid lines
         ax.grid(True, linestyle='--', alpha=0.7)
 
     plt.tight_layout()
+
+    # Save the plot if required
     if save:
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
@@ -246,9 +255,13 @@ def plot_evolution_groups(algo_names, train_group_1, train_group_2, save=False, 
         plt.savefig(full_save_path, dpi=300)
         print(f"Plot saved to {full_save_path}")
 
+    # Show the plot if required
     if show:
         plt.show()
 
+    # Close the plot to free memory
     plt.close()
+
+
 
 
